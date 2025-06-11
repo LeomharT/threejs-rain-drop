@@ -7,6 +7,7 @@ import {
 	Scene,
 	ShaderMaterial,
 	SphereGeometry,
+	Spherical,
 	Uniform,
 	Vector3,
 	WebGLRenderer,
@@ -59,6 +60,9 @@ const uniforms = {
 	uSunDirection: new Uniform(new Vector3()),
 };
 
+const sunSpherical = new Spherical(1, Math.PI / 2, 0.5);
+const sunDirection = new Vector3();
+
 // Sun
 const sunGeometrt = new IcosahedronGeometry(0.1, 5);
 const sunMaterial = new MeshBasicMaterial({ color: 'yellow' });
@@ -66,7 +70,17 @@ const sun = new Mesh(sunGeometrt, sunMaterial);
 
 scene.add(sun);
 
-function updateSun() {}
+function updateSun() {
+	// Direction
+	sunDirection.setFromSpherical(sunSpherical);
+
+	// Sun Position
+	sun.position.copy(sunDirection).multiplyScalar(5.0);
+
+	// Uniforms
+	uniforms.uSunDirection.value.copy(sunDirection);
+}
+updateSun();
 
 // Earth
 const earthGeometry = new SphereGeometry(2, 32, 32);
