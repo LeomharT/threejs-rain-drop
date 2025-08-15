@@ -1,11 +1,15 @@
 import {
 	Clock,
 	Color,
+	IcosahedronGeometry,
 	Mesh,
+	MeshBasicMaterial,
 	PerspectiveCamera,
 	Scene,
 	ShaderMaterial,
 	SphereGeometry,
+	Uniform,
+	Vector3,
 	WebGLRenderer,
 } from 'three';
 import { OrbitControls, TrackballControls } from 'three/examples/jsm/Addons.js';
@@ -65,11 +69,23 @@ el.append(stats.dom);
  * Worlds
  */
 
+const uniforms = {
+	uSunDirection: new Uniform(new Vector3()),
+};
+
+const sunGeometry = new IcosahedronGeometry(0.5, 3);
+const sunMaterial = new MeshBasicMaterial({
+	color: 'yellow',
+});
+const sun = new Mesh(sunGeometry, sunMaterial);
+scene.add(sun);
+
 const earthGeometry = new SphereGeometry(2, 32, 32);
 const earthMaterial = new ShaderMaterial({
 	wireframe: true,
 	vertexShader: earthVertexShader,
 	fragmentShader: earthFragmentShader,
+	uniforms,
 });
 
 const earth = new Mesh(earthGeometry, earthMaterial);
