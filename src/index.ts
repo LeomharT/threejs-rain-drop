@@ -163,6 +163,11 @@ pane.element.parentElement!.style.width = '380px';
 			type: 'float',
 		},
 	});
+	folder.addBinding(uniforms.uAtmosphereDayColor, 'value', {
+		color: {
+			type: 'float',
+		},
+	});
 }
 // Sun Pane
 {

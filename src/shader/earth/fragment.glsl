@@ -1,72 +1,79 @@
-precision mediump float;
-
 varying vec2 vUv;
-varying vec3 vPosition;
 varying vec3 vNormal;
+varying vec3 vPosition;
+
+uniform vec3 uSunDirection;
+
+uniform vec3 uAtmosphereDayColor;
+uniform vec3 uAtmosphereTwilightColor;
 
 uniform sampler2D uEarthDayMapTexture;
 uniform sampler2D uEarthNightMapTexture;
 uniform sampler2D uSpecularCloudsTexture;
 
-uniform vec3 uSunDirection;
-uniform vec3 uAtmosphereDayColor;
-uniform vec3 uAtmosphereTwilightColor;
-
-void main() {
+void main(){
+    vec3 color = vec3(0.0);
     vec2 uv = vUv;
     vec3 normal = normalize(vNormal);
     vec3 viewDirection = normalize(vPosition - cameraPosition);
 
-    vec3 color = vec3(0.0);
-
     vec3 sunDirection = uSunDirection;
     float sunOrientation = dot(sunDirection, normal);
 
-    // Textures
     vec4 dayMapTextureColor = texture2D(uEarthDayMapTexture, uv);
     vec4 nightMapTextureColor = texture2D(uEarthNightMapTexture, uv);
-    vec4 specularCloudsColor = texture2D(uSpecularCloudsTexture, uv);
-
-    // DayMix
+    vec4 specularCloudsTextureColor = texture2D(uSpecularCloudsTexture, uv);
+ 
+    // Day Mix
     float dayMix = smoothstep(-0.25, 0.5, sunOrientation);
     color = mix(
-        nightMapTextureColor.xyz,
-        dayMapTextureColor.xyz,
+        nightMapTextureColor.rgb,
+        dayMapTextureColor.rgb,
         dayMix
     );
 
+    // Clourd
+    float cloudMix = smoothstep(0.3, 1.0, specularCloudsTextureColor.g);
+    cloudMix *= dayMix;
+    color = mix(
+        color,
+        vec3(1.0),
+        cloudMix
+    );
+
     // Fresnel
-    float fresnel = dot(normal, viewDirection) + 1.0;
-    fresnel = max(fresnel, 0.0);
+    float fresnel = dot(viewDirection, normal) + 1.0;
+    fresnel = max(0.0, fresnel);
     fresnel = pow(fresnel, 2.0);
-
-    // Atomosphere
+ 
+    // Atmosphere
     float atmosphereDayMix = smoothstep(-0.5, 1.0, sunOrientation);
-
-    vec3 atmosphereDayColor = mix(
+    vec3 atmosphereColor = mix(
         uAtmosphereTwilightColor,
         uAtmosphereDayColor,
         atmosphereDayMix
     );
-
     color = mix(
         color,
-        atmosphereDayColor,
-        fresnel * dayMix
+        atmosphereColor,
+        dayMix * fresnel
     );
 
     // Specular
-    vec3 reflection = reflect(sunDirection, normal);
-
-    float specular = dot(viewDirection, reflection);
+    vec3 reflection = reflect(-sunDirection, normal);
+    float specular = - dot(reflection, viewDirection);
     specular = max(0.0, specular);
     specular = pow(specular, 20.0);
-    specular *= specularCloudsColor.r;
-
-    vec3 specularColor = mix(vec3(1.0), uAtmosphereTwilightColor, fresnel);
-
-    // color += specularColor * specular;
-
+    specular *= specularCloudsTextureColor.r;
+    
+    vec3 specularColor = mix(
+        vec3(1.0),
+        uAtmosphereTwilightColor,
+        fresnel
+    );
+    
+    color += specularColor * specular;
+    
     // Final color
     gl_FragColor = vec4(color, 1.0);
 
