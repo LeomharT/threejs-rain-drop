@@ -1,4 +1,5 @@
 import {
+	ClampToEdgeWrapping,
 	Clock,
 	Color,
 	DoubleSide,
@@ -6,10 +7,12 @@ import {
 	Mesh,
 	MeshBasicMaterial,
 	PerspectiveCamera,
+	ReinhardToneMapping,
 	Scene,
 	ShaderMaterial,
 	SphereGeometry,
 	Spherical,
+	SRGBColorSpace,
 	TextureLoader,
 	Uniform,
 	Vector3,
@@ -41,7 +44,18 @@ textureLoader.setPath('/src/assets/textures');
  */
 
 const earthDayMapTexture = textureLoader.load('/2k_earth_daymap.jpg');
+earthDayMapTexture.colorSpace = SRGBColorSpace;
+earthDayMapTexture.wrapS = ClampToEdgeWrapping;
+earthDayMapTexture.wrapT = ClampToEdgeWrapping;
+earthDayMapTexture.anisotropy = 16;
+
 const earthNightMapTexture = textureLoader.load('/2k_earth_nightmap.jpg');
+earthNightMapTexture.colorSpace = SRGBColorSpace;
+earthNightMapTexture.wrapS = ClampToEdgeWrapping;
+earthNightMapTexture.wrapT = ClampToEdgeWrapping;
+earthNightMapTexture.anisotropy = 16;
+
+const specularCloudsTexture = textureLoader.load('/specularClouds.jpg');
 
 /**
  * Basic
@@ -54,6 +68,8 @@ const renderer = new WebGLRenderer({
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelRatio);
+renderer.toneMapping = ReinhardToneMapping;
+renderer.toneMappingExposure = 1.0;
 
 el.append(renderer.domElement);
 
@@ -90,7 +106,8 @@ const uniforms = {
 	uSunDirection: new Uniform(new Vector3()),
 	// Textures
 	uEarthDayMapTexture: new Uniform(earthDayMapTexture),
-	uEarthNightMapTexture: new Uniform(earthDayMapTexture),
+	uEarthNightMapTexture: new Uniform(earthNightMapTexture),
+	uSpecularCloudsTexture: new Uniform(specularCloudsTexture),
 };
 
 const sunDirection = new Vector3();
@@ -179,6 +196,8 @@ function render() {
 	controls.update(delta);
 	controls2.update();
 	stats.update();
+
+	earth.rotation.y += delta * 0.1;
 }
 
 render();
