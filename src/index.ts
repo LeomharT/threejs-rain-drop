@@ -108,6 +108,9 @@ const uniforms = {
 	uEarthDayMapTexture: new Uniform(earthDayMapTexture),
 	uEarthNightMapTexture: new Uniform(earthNightMapTexture),
 	uSpecularCloudsTexture: new Uniform(specularCloudsTexture),
+	// Colors
+	uAtmosphereDayColor: new Uniform(new Color('#00aaff')),
+	uAtmosphereTwilightColor: new Uniform(new Color('#ff6600')),
 };
 
 const sunDirection = new Vector3();
@@ -155,6 +158,11 @@ pane.element.parentElement!.style.width = '380px';
 // Earth Pane
 {
 	const folder = pane.addFolder({ title: '🌎 Earth' });
+	folder.addBinding(uniforms.uAtmosphereTwilightColor, 'value', {
+		color: {
+			type: 'float',
+		},
+	});
 }
 // Sun Pane
 {
