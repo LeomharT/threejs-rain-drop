@@ -1,6 +1,7 @@
 import {
 	Clock,
 	Color,
+	DoubleSide,
 	IcosahedronGeometry,
 	Mesh,
 	MeshBasicMaterial,
@@ -8,6 +9,8 @@ import {
 	Scene,
 	ShaderMaterial,
 	SphereGeometry,
+	Spherical,
+	TextureLoader,
 	Uniform,
 	Vector3,
 	WebGLRenderer,
@@ -26,6 +29,19 @@ const sizes = {
 	height: window.innerHeight,
 	pixelRatio: Math.min(2, window.devicePixelRatio),
 };
+
+/**
+ * Loaders
+ */
+const textureLoader = new TextureLoader();
+textureLoader.setPath('/src/assets/textures');
+
+/**
+ * Textures
+ */
+
+const earthDayMapTexture = textureLoader.load('/2k_earth_daymap.jpg');
+const earthNightMapTexture = textureLoader.load('/2k_earth_nightmap.jpg');
 
 /**
  * Basic
@@ -70,22 +86,43 @@ el.append(stats.dom);
  */
 
 const uniforms = {
+	// Vector
 	uSunDirection: new Uniform(new Vector3()),
+	// Textures
+	uEarthDayMapTexture: new Uniform(earthDayMapTexture),
+	uEarthNightMapTexture: new Uniform(earthDayMapTexture),
 };
 
-const sunGeometry = new IcosahedronGeometry(0.5, 3);
+const sunDirection = new Vector3();
+const sunSpherical = new Spherical(1, Math.PI / 2, 0.5);
+
+const sunGeometry = new IcosahedronGeometry(0.1, 3);
 const sunMaterial = new MeshBasicMaterial({
 	color: 'yellow',
 });
 const sun = new Mesh(sunGeometry, sunMaterial);
 scene.add(sun);
 
-const earthGeometry = new SphereGeometry(2, 32, 32);
+function updateSun() {
+	// Direction
+	sunDirection.setFromSpherical(sunSpherical);
+
+	// Position
+	sun.position.copy(sunDirection).multiplyScalar(5.0);
+
+	// Uniform
+	uniforms.uSunDirection.value.copy(sunDirection);
+}
+
+updateSun();
+
+const earthGeometry = new SphereGeometry(2, 128, 128);
 const earthMaterial = new ShaderMaterial({
-	wireframe: true,
 	vertexShader: earthVertexShader,
 	fragmentShader: earthFragmentShader,
 	uniforms,
+	transparent: true,
+	side: DoubleSide,
 });
 
 const earth = new Mesh(earthGeometry, earthMaterial);
@@ -102,7 +139,26 @@ pane.element.parentElement!.style.width = '380px';
 {
 	const folder = pane.addFolder({ title: '🌎 Earth' });
 }
-
+// Sun Pane
+{
+	const folder = pane.addFolder({ title: '☀️ Sun' });
+	folder
+		.addBinding(sunSpherical, 'phi', {
+			label: 'Sun Spherical Phi',
+			min: 0,
+			max: Math.PI,
+			step: 0.01,
+		})
+		.on('change', updateSun);
+	folder
+		.addBinding(sunSpherical, 'theta', {
+			label: 'Sun Spherical Theta',
+			min: 0,
+			max: Math.PI * 2,
+			step: 0.01,
+		})
+		.on('change', updateSun);
+}
 /**
  * Events
  */
@@ -122,6 +178,7 @@ function render() {
 	// Updates
 	controls.update(delta);
 	controls2.update();
+	stats.update();
 }
 
 render();
