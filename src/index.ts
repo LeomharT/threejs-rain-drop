@@ -1,4 +1,5 @@
 import {
+	ACESFilmicToneMapping,
 	ClampToEdgeWrapping,
 	Clock,
 	Color,
@@ -7,7 +8,6 @@ import {
 	Mesh,
 	MeshBasicMaterial,
 	PerspectiveCamera,
-	ReinhardToneMapping,
 	Scene,
 	ShaderMaterial,
 	SphereGeometry,
@@ -68,7 +68,7 @@ const renderer = new WebGLRenderer({
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelRatio);
-renderer.toneMapping = ReinhardToneMapping;
+renderer.toneMapping = ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 el.append(renderer.domElement);
@@ -189,6 +189,7 @@ pane.element.parentElement!.style.width = '380px';
 		})
 		.on('change', updateSun);
 }
+
 /**
  * Events
  */
