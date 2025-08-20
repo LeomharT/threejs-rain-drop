@@ -13,13 +13,13 @@ uniform vec3 uAtmosphereTwilightColor;
 
 void main(){
     // Variables
-    vec3 color = vec3(0.0);
-    vec2 uv = vUv;
-    vec3 normal = normalize(vNormal);
+    vec3 color         = vec3(0.0);
+    vec2 uv            = vUv;
+    vec3 normal        = normalize(vNormal);
     vec3 viewDirection = normalize(vPosition - cameraPosition);
 
     // Uniforms
-    vec3 sunDirection = uSunDirection;
+    vec3  sunDirection   = uSunDirection;
     float sunOrientation = dot(sunDirection, normal);
 
     // Texutre Color

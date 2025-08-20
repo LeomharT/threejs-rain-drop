@@ -1,5 +1,6 @@
 import {
 	ACESFilmicToneMapping,
+	BackSide,
 	ClampToEdgeWrapping,
 	Clock,
 	Color,
@@ -21,8 +22,11 @@ import {
 import { OrbitControls, TrackballControls } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Pane } from 'tweakpane';
+import atmosphereFragmentShader from './shader/atmosphere/fragment.glsl?raw';
+import atmosphereVertexShader from './shader/atmosphere/vertex.glsl?raw';
 import earthFragmentShader from './shader/earth/fragment.glsl?raw';
 import earthVertexShader from './shader/earth/vertex.glsl?raw';
+
 import './style.css';
 
 const el = document.querySelector('#root') as HTMLDivElement;
@@ -147,6 +151,19 @@ const earthMaterial = new ShaderMaterial({
 
 const earth = new Mesh(earthGeometry, earthMaterial);
 scene.add(earth);
+
+const atmosphereGeometry = earthGeometry.clone();
+const atmosphereMaterial = new ShaderMaterial({
+	fragmentShader: atmosphereFragmentShader,
+	vertexShader: atmosphereVertexShader,
+	uniforms,
+	transparent: true,
+	side: BackSide,
+});
+
+const atmosphere = new Mesh(atmosphereGeometry, atmosphereMaterial);
+atmosphere.scale.setScalar(1.04);
+scene.add(atmosphere);
 
 /**
  * Pane
