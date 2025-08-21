@@ -147,6 +147,7 @@ const earthMaterial = new ShaderMaterial({
 	uniforms,
 	transparent: true,
 	side: DoubleSide,
+	visible: true,
 });
 
 const earth = new Mesh(earthGeometry, earthMaterial);
