@@ -179,11 +179,13 @@ pane.element.parentElement!.style.width = '380px';
 		color: {
 			type: 'float',
 		},
+		label: 'uAtmosphereTwilightColor',
 	});
 	folder.addBinding(uniforms.uAtmosphereDayColor, 'value', {
 		color: {
 			type: 'float',
 		},
+		label: 'uAtmosphereDayColor',
 	});
 }
 // Sun Pane

@@ -11,20 +11,21 @@ uniform sampler2D uSpecularCloudsTexture;
 uniform vec3 uAtmosphereDayColor;
 uniform vec3 uAtmosphereTwilightColor;
 
-void main(){
-    // Variables
-    vec3 color         = vec3(0.0);
-    vec2 uv            = vUv;
-    vec3 normal        = normalize(vNormal);
-    vec3 viewDirection = normalize(vPosition - cameraPosition);
+void main() {
+    // Variable
+    vec3  color         = vec3(0.0);
+    vec2  uv            = vUv;
+    vec3  normal        = normalize(vNormal);
+    vec3  viewDirection = normalize(vPosition - cameraPosition);
+    float alpha         = 1.0;
 
-    // Uniforms
+    // Sun orientation
     vec3  sunDirection   = uSunDirection;
     float sunOrientation = dot(sunDirection, normal);
 
-    // Texutre Color
-    vec4 dayMapTextureColor = texture2D(uEarthDayMapTexture, uv);
-    vec4 nightMapTextureColor = texture2D(uEarthNightMapTexture, uv);
+    // Texture color
+    vec4 dayMapTextureColor         = texture2D(uEarthDayMapTexture, uv);
+    vec4 nightMapTextureColor       = texture2D(uEarthNightMapTexture, uv);
     vec4 specularCloudsTextureColor = texture2D(uSpecularCloudsTexture, uv);
 
     // Day mix
@@ -64,10 +65,11 @@ void main(){
     );
 
     // Specular
-    vec3 reflection = reflect(sunDirection, normal);
-    float specular = dot(reflection, viewDirection);
+    vec3 reflection = reflect(-sunDirection, normal);
+    float specular = -dot(reflection, viewDirection);
     specular = max(0.0, specular);
     specular = pow(specular, 20.0);
+    specular *= specularCloudsTextureColor.r;
     
     vec3 specularColor = mix(
         vec3(1.0),
@@ -76,10 +78,10 @@ void main(){
     );
 
     color += specularColor * specular;
-     
 
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, alpha);
 
+    // Includes
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
 }
