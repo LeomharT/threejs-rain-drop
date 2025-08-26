@@ -157,7 +157,7 @@ scene.add(earth);
 
 const pane = new Pane({ title: 'Debug Params' });
 pane.element.parentElement!.style.width = '380px';
-
+// Sun debug panel
 {
 	const folder = pane.addFolder({ title: 'Sun' });
 	folder
@@ -176,6 +176,20 @@ pane.element.parentElement!.style.width = '380px';
 			step: 0.001,
 		})
 		.on('change', updateSun);
+}
+// Earth panel
+{
+	const folder = pane.addFolder({ title: 'Earth' });
+	folder.addBinding(uniforms.uAtmosphereDayColor, 'value', {
+		color: {
+			type: 'float',
+		},
+	});
+	folder.addBinding(uniforms.uAtmosphereTwilightColor, 'value', {
+		color: {
+			type: 'float',
+		},
+	});
 }
 
 /**
