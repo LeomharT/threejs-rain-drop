@@ -14,5 +14,5 @@ void main() {
     // Varying
     vUv       = uv;
     vNormal   = modelNormal.xyz;
-    vPosition = modelNormal.xyz;
+    vPosition = modelPosition.xyz;
 }
