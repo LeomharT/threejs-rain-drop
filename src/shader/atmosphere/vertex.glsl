@@ -8,11 +8,9 @@ void main() {
     vec4 viewPosition       = viewMatrix * modelPosition;
     vec4 projectionPosition = projectionMatrix * viewPosition;
 
-    // Final position
     gl_Position = projectionPosition;
 
-    // Varying
     vUv       = uv;
-    vNormal   = modelNormal.xyz;
     vPosition = modelPosition.xyz;
+    vNormal   = modelNormal.xyz;
 }

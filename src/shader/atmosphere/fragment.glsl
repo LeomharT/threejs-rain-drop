@@ -8,13 +8,14 @@ uniform vec3 uAtmosphereDayColor;
 uniform vec3 uAtmosphereTwilightColor;
 
 void main() {
-    vec3 color         = vec3(0.0);
-    vec2 uv            = vUv;
-    vec3 viewDirection = normalize(vPosition - cameraPosition);
-    vec3 normal        = normalize(vNormal);
+    vec3  color         = vec3(0.0);
+    vec2  uv            = vUv;
+    vec3  normal        = normalize(vNormal);
+    vec3  viewDirection = normalize(vPosition - cameraPosition);
+    float alpha         = 1.0;
 
     // Sun orientation
-    vec3 sunDirection = uSunDirection;
+    vec3  sunDirection   = uSunDirection;
     float sunOrientation = dot(sunDirection, normal);
 
     // Atmosphere
@@ -24,7 +25,6 @@ void main() {
         uAtmosphereDayColor,
         atmosphereDayMix
     );
-
     color = atmosphereColor;
 
     // Edge alpha
@@ -34,8 +34,9 @@ void main() {
 
     // Day alpha
     float dayAlpha = smoothstep(-0.5, 0.0, sunOrientation);
- 
-    float alpha = edgeAlpha * dayAlpha; 
+
+
+    alpha = edgeAlpha * dayAlpha;
 
     gl_FragColor = vec4(color, alpha);
 

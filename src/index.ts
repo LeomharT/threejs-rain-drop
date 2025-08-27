@@ -3,7 +3,6 @@ import {
 	BackSide,
 	Clock,
 	Color,
-	DoubleSide,
 	IcosahedronGeometry,
 	Mesh,
 	MeshBasicMaterial,
