@@ -1,5 +1,6 @@
 import {
 	ACESFilmicToneMapping,
+	BackSide,
 	Clock,
 	Color,
 	IcosahedronGeometry,
@@ -18,6 +19,8 @@ import {
 } from 'three';
 import { OrbitControls, TrackballControls } from 'three/examples/jsm/Addons.js';
 import { Pane } from 'tweakpane';
+import atmosphereFragmentShader from './shader/atmosphere/fragment.glsl?raw';
+import atmosphereVertexShader from './shader/atmosphere/vertex.glsl?raw';
 import earthFragmentShader from './shader/earth/fragment.glsl?raw';
 import earthVertexShader from './shader/earth/vertex.glsl?raw';
 import './style.css';
@@ -137,6 +140,18 @@ const earthMateiral = new ShaderMaterial({
 });
 const earth = new Mesh(earthGeometry, earthMateiral);
 scene.add(earth);
+
+const atmosphereGeometry = earthGeometry.clone();
+const atmosphereMaterial = new ShaderMaterial({
+	uniforms,
+	vertexShader: atmosphereVertexShader,
+	fragmentShader: atmosphereFragmentShader,
+	transparent: true,
+	side: BackSide,
+});
+const atmosphere = new Mesh(atmosphereGeometry, atmosphereMaterial);
+atmosphere.scale.setScalar(1.04);
+scene.add(atmosphere);
 
 /**
  * Pane
