@@ -1,11 +1,17 @@
 import {
 	ACESFilmicToneMapping,
+	AxesHelper,
 	Clock,
 	Color,
+	DirectionalLight,
 	EquirectangularReflectionMapping,
 	Mesh,
+	MeshDepthMaterial,
 	MeshStandardMaterial,
+	PCFSoftShadowMap,
 	PerspectiveCamera,
+	PlaneGeometry,
+	RGBADepthPacking,
 	Scene,
 	ShaderChunk,
 	TextureLoader,
@@ -77,6 +83,8 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelratio);
 renderer.toneMapping = ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = PCFSoftShadowMap;
 el.append(renderer.domElement);
 
 const scene = new Scene();
@@ -115,11 +123,22 @@ const uniforms = {
  * World
  */
 
-gltfLoader.load('suzanne.glb', (data) => {
-	const suzanne = data.scene;
+const depthMaterial = new CustomShaderMaterial({
+	baseMaterial: MeshDepthMaterial,
+	uniforms,
+	vertexShader,
+	depthPacking: RGBADepthPacking,
+	fragmentShader: fragmentShader
+		.replace('csm_Roughness = 1.0;', '')
+		.replace('csm_Metalness = 1.0;', ''),
+});
 
-	if (suzanne.children[0] instanceof Mesh) {
-		suzanne.children[0].material = new CustomShaderMaterial({
+gltfLoader.load('suzanne.glb', (data) => {
+	const suzanne = data.scene.children[0];
+	suzanne.castShadow = true;
+
+	if (suzanne instanceof Mesh) {
+		suzanne.material = new CustomShaderMaterial({
 			baseMaterial: MeshStandardMaterial,
 			uniforms,
 			vertexShader,
@@ -128,14 +147,41 @@ gltfLoader.load('suzanne.glb', (data) => {
 			roughness: 0.0,
 			metalness: 1.0,
 		});
+		suzanne.customDepthMaterial = depthMaterial;
+		console.log(suzanne);
 	}
 
 	scene.add(suzanne);
 });
 
+const plane = new Mesh(
+	new PlaneGeometry(5, 5, 48, 48),
+	new MeshStandardMaterial({
+		color: 0xffffff,
+	})
+);
+plane.receiveShadow = true;
+plane.castShadow = true;
+plane.position.set(-3, 0, 0);
+plane.lookAt(scene.position.clone());
+scene.add(plane);
+
 /**
  * Lights
  */
+
+const directionalLight = new DirectionalLight(0xffffff, 3.5);
+directionalLight.position.set(4, 0, 0);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.set(1024, 1024);
+scene.add(directionalLight);
+
+/**
+ * Helpers
+ */
+
+const axesHelper = new AxesHelper();
+scene.add(axesHelper);
 
 /**
  * Pane
