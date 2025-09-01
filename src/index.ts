@@ -2,10 +2,8 @@ import {
 	ACESFilmicToneMapping,
 	AxesHelper,
 	Clock,
-	Color,
 	DirectionalLight,
 	EquirectangularReflectionMapping,
-	IcosahedronGeometry,
 	Mesh,
 	MeshStandardMaterial,
 	PCFSoftShadowMap,
@@ -27,6 +25,7 @@ import {
 	TrackballControls,
 } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
+import { Pane } from 'tweakpane';
 import random2D from './shader/include/random2D.glsl?raw';
 import simplex3DNoise from './shader/include/simplex3DNoise.glsl?raw';
 import rippleFragmentShader from './shader/ripple/fragment.glsl?raw';
@@ -66,7 +65,7 @@ const rgbeLoader = new RGBELoader();
  * Textures
  */
 
-const floorNormal = textureLoader.load('/Ground_Normal.jpg');
+const floorNormal = textureLoader.load('/floorNormal.jpg');
 const floorRoughness = textureLoader.load('/Ground_Wet_002_roughness.jpg');
 const floorMask = textureLoader.load('/Ground_Wet_002_mask.jpg');
 floorMask.wrapS = floorMask.wrapT = RepeatWrapping;
@@ -127,6 +126,9 @@ const uniforms = {
 	uTime: new Uniform(0),
 
 	uGroundWetMask: new Uniform(floorMask),
+
+	uRippleCircleScale: new Uniform(2.5),
+	uRoughnessMap: new Uniform(floorRoughness),
 };
 
 /**
@@ -140,7 +142,6 @@ const floorMaterial = new CustomShaderMaterial({
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
 	normalMap: floorNormal,
-	roughnessMap: floorRoughness,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;
@@ -148,22 +149,12 @@ floor.castShadow = true;
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-const test = new Mesh(
-	new IcosahedronGeometry(0.2, 3),
-	new MeshStandardMaterial({
-		color: new Color('red'),
-	})
-);
-test.position.set(0, 1.1, 0);
-test.castShadow = true;
-scene.add(test);
-
 /**
  * Lights
  */
 
-const directionalLight = new DirectionalLight(0xffffff, 0.02);
-directionalLight.position.set(3, 3, 0);
+const directionalLight = new DirectionalLight(0xffffff, 1.0);
+directionalLight.position.set(-3, 3, -3);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
@@ -177,6 +168,16 @@ scene.add(axesHelper);
 /**
  * Pane
  */
+
+const pane = new Pane({ title: 'Debug Params' });
+pane.element.parentElement!.style.width = '380px';
+
+pane.addBinding(uniforms.uRippleCircleScale, 'value', {
+	label: 'CircleScale',
+	min: 0.1,
+	max: 5.0,
+	step: 0.001,
+});
 
 /**
  * Event

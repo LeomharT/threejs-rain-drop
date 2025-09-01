@@ -3,7 +3,7 @@ precision highp float;
 #endif
 
 // Maximum number of cells a ripple can cross.
-#define MAX_RADIUS 2
+#define MAX_RADIUS 1
 
 // Set to 1 to hash twice. Slower, but less patterns.
 #define DOUBLE_HASH 0
@@ -18,8 +18,13 @@ precision highp float;
 varying vec2 vUv;
 
 uniform float uTime;
+uniform float uRippleCircleScale;
+
 uniform vec2 uResolution;
+
+uniform sampler2D uRoughnessMap;
 uniform sampler2D uGroundWetMask;
+
 
 float hash12(vec2 p)
 {
@@ -40,10 +45,11 @@ void main() {
     vec3  color      = vec3(0.4);
     vec2  circles    = vec2(0.0);
     float resolution = 10.0 * exp2(-3.0 * 0.0 / uResolution.x);
-    vec2  uv         = vUv * resolution;
+    vec2  uv         = vUv * resolution * uRippleCircleScale;
     vec2  p0         = floor(uv);
 
-    float maskValue = texture2D(uGroundWetMask, vUv).r;
+    vec4 groundWetMaskColor = texture2D(uGroundWetMask, vUv);
+    vec4 roughnessMapColor  = texture2D(uRoughnessMap, vUv);
 
     for (int j = -MAX_RADIUS; j <= MAX_RADIUS; ++j) {
         for (int i = -MAX_RADIUS; i <= MAX_RADIUS; ++i) {
@@ -72,17 +78,17 @@ void main() {
         }
     }
 
-    circles /= float((MAX_RADIUS*2+1)*(MAX_RADIUS*2+1));
-
-    circles *= maskValue;
+    circles /= float((MAX_RADIUS * 2 + 1) * (MAX_RADIUS * 2 + 1));
+    circles *= groundWetMaskColor.r;
 
     float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05 * uTime + 0.5)*2.-1.)));
     vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
 
+    csm_Roughness = roughnessMapColor.r;
 
     color = vec3(0.0)
     + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
 
     csm_DiffuseColor += vec4(color, 1.0);
-}
+  }
  
