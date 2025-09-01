@@ -19,7 +19,7 @@ varying vec2 vUv;
 
 uniform float uTime;
 uniform vec2 uResolution;
-uniform sampler2D uAbstract;
+uniform sampler2D uGroundWetMask;
 
 float hash12(vec2 p)
 {
@@ -38,11 +38,12 @@ vec2 hash22(vec2 p)
 
 void main() {
     vec3  color      = vec3(0.4);
-    vec2  circles    = vec2(0.);
+    vec2  circles    = vec2(0.0);
     float resolution = 10.0 * exp2(-3.0 * 0.0 / uResolution.x);
     vec2  uv         = vUv * resolution;
     vec2  p0         = floor(uv);
 
+    float maskValue = texture2D(uGroundWetMask, vUv).r;
 
     for (int j = -MAX_RADIUS; j <= MAX_RADIUS; ++j) {
         for (int i = -MAX_RADIUS; i <= MAX_RADIUS; ++i) {
@@ -73,6 +74,8 @@ void main() {
 
     circles /= float((MAX_RADIUS*2+1)*(MAX_RADIUS*2+1));
 
+    circles *= maskValue;
+
     float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05 * uTime + 0.5)*2.-1.)));
     vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
 
@@ -80,8 +83,6 @@ void main() {
     color = vec3(0.0)
     + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
 
-    if(csm_Roughness < 1.01) {
-        csm_DiffuseColor += vec4(color, 1.0);
-    }
+    csm_DiffuseColor += vec4(color, 1.0);
 }
  

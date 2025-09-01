@@ -11,6 +11,7 @@ import {
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
+	RepeatWrapping,
 	Scene,
 	ShaderChunk,
 	TextureLoader,
@@ -65,20 +66,11 @@ const rgbeLoader = new RGBELoader();
  * Textures
  */
 
-const abstract = textureLoader.load('/acstract2.jpg');
+const floorNormal = textureLoader.load('/Ground_Normal.jpg');
+const floorRoughness = textureLoader.load('/Ground_Wet_002_roughness.jpg');
+const floorMask = textureLoader.load('/Ground_Wet_002_mask.jpg');
+floorMask.wrapS = floorMask.wrapT = RepeatWrapping;
 
-const floorColorTexture = textureLoader.load(
-	'/pavement_02_1k/pavement_02_diff_1k.jpg'
-);
-const floorARMTexture = textureLoader.load(
-	'/pavement_02_1k/pavement_02_arm_1k.jpg'
-);
-const floorNormalTexture = textureLoader.load(
-	'/pavement_02_1k/pavement_02_nor_gl_1k.jpg'
-);
-const floorDispTexture = textureLoader.load(
-	'/pavement_02_1k/pavement_02_disp_1k.jpg'
-);
 rgbeLoader.load('/zawiszy_czarnego_1k.hdr', (texture) => {
 	texture.mapping = EquirectangularReflectionMapping;
 
@@ -134,7 +126,7 @@ const uniforms = {
 	uResolution: new Uniform(sizes.resolution),
 	uTime: new Uniform(0),
 
-	uAbstract: new Uniform(abstract),
+	uGroundWetMask: new Uniform(floorMask),
 };
 
 /**
@@ -147,13 +139,8 @@ const floorMaterial = new CustomShaderMaterial({
 	uniforms,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
-	map: floorColorTexture,
-	displacementMap: floorDispTexture,
-	displacementScale: 0.05,
-	normalMap: floorNormalTexture,
-	aoMap: floorARMTexture,
-	roughnessMap: floorARMTexture,
-	metalnessMap: floorARMTexture,
+	normalMap: floorNormal,
+	roughnessMap: floorRoughness,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;
@@ -175,7 +162,7 @@ scene.add(test);
  * Lights
  */
 
-const directionalLight = new DirectionalLight(0xffffff);
+const directionalLight = new DirectionalLight(0xffffff, 0.02);
 directionalLight.position.set(3, 3, 0);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
