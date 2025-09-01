@@ -2,34 +2,29 @@ import {
 	ACESFilmicToneMapping,
 	AxesHelper,
 	Clock,
-	Color,
-	DirectionalLight,
 	EquirectangularReflectionMapping,
 	Mesh,
-	MeshDepthMaterial,
-	MeshStandardMaterial,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
-	RGBADepthPacking,
 	Scene,
 	ShaderChunk,
+	ShaderMaterial,
 	TextureLoader,
 	Uniform,
+	Vector2,
 	WebGLRenderer,
 } from 'three';
-import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
 	GLTFLoader,
 	OrbitControls,
 	RGBELoader,
 	TrackballControls,
 } from 'three/examples/jsm/Addons.js';
-import { Pane } from 'tweakpane';
-import fragmentShader from './shader/dissolution/fragment.glsl?raw';
-import vertexShader from './shader/dissolution/vertex.glsl?raw';
 import random2D from './shader/include/random2D.glsl?raw';
 import simplex3DNoise from './shader/include/simplex3DNoise.glsl?raw';
+import rippleFragmentShader from './shader/ripple/fragment.glsl?raw';
+import rippleVertexShader from './shader/ripple/vertex.glsl?raw';
 import './style.css';
 
 type ShaderLab = typeof ShaderChunk & {
@@ -46,6 +41,7 @@ const sizes = {
 	width: window.innerWidth,
 	height: window.innerHeight,
 	pixelratio: Math.min(2, window.devicePixelRatio),
+	resolution: new Vector2(window.innerWidth, window.innerHeight),
 };
 
 /**
@@ -63,6 +59,8 @@ const rgbeLoader = new RGBELoader();
 /**
  * Textures
  */
+
+const abstract = textureLoader.load('/acstract2.jpg');
 
 rgbeLoader.load('/zawiszy_czarnego_1k.hdr', (texture) => {
 	texture.mapping = EquirectangularReflectionMapping;
@@ -112,69 +110,29 @@ controls2.dynamicDampingFactor = 0.2;
  */
 
 const uniforms = {
-	uProcess: new Uniform(-1.0),
-	uFrequency: new Uniform(0.85),
-	uEdgeColor: new Uniform(new Color(0x4d9bff)),
-	uStrength: new Uniform(1.0),
-	uEdge: new Uniform(0.03),
+	uResolution: new Uniform(sizes.resolution),
+	uTime: new Uniform(0),
+
+	uAbstract: new Uniform(abstract),
 };
 
 /**
  * World
  */
 
-const depthMaterial = new CustomShaderMaterial({
-	baseMaterial: MeshDepthMaterial,
+const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
+const floorMaterial = new ShaderMaterial({
 	uniforms,
-	vertexShader,
-	depthPacking: RGBADepthPacking,
-	fragmentShader: fragmentShader
-		.replace('csm_Roughness = 1.0;', '')
-		.replace('csm_Metalness = 1.0;', ''),
+	vertexShader: rippleVertexShader,
+	fragmentShader: rippleFragmentShader,
 });
-
-gltfLoader.load('suzanne.glb', (data) => {
-	const suzanne = data.scene.children[0];
-	suzanne.castShadow = true;
-
-	if (suzanne instanceof Mesh) {
-		suzanne.material = new CustomShaderMaterial({
-			baseMaterial: MeshStandardMaterial,
-			uniforms,
-			vertexShader,
-			fragmentShader,
-			transparent: true,
-			roughness: 0.0,
-			metalness: 1.0,
-		});
-		suzanne.customDepthMaterial = depthMaterial;
-		console.log(suzanne);
-	}
-
-	scene.add(suzanne);
-});
-
-const plane = new Mesh(
-	new PlaneGeometry(5, 5, 48, 48),
-	new MeshStandardMaterial({
-		color: 0xffffff,
-	})
-);
-plane.receiveShadow = true;
-plane.castShadow = true;
-plane.position.set(-3, 0, 0);
-plane.lookAt(scene.position.clone());
-scene.add(plane);
+const floor = new Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
 
 /**
  * Lights
  */
-
-const directionalLight = new DirectionalLight(0xffffff, 3.5);
-directionalLight.position.set(4, 0, 0);
-directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.set(1024, 1024);
-scene.add(directionalLight);
 
 /**
  * Helpers
@@ -187,35 +145,6 @@ scene.add(axesHelper);
  * Pane
  */
 
-const pane = new Pane({ title: 'Debug' });
-pane.element.parentElement!.style.width = '380px';
-pane.addBinding(uniforms.uProcess, 'value', {
-	label: 'Process',
-	min: -1.0,
-	max: 1.0,
-	step: 0.001,
-});
-pane.addBinding(uniforms.uFrequency, 'value', {
-	label: 'Frequency',
-	min: 0,
-	max: 10.0,
-	step: 0.001,
-});
-pane.addBinding(uniforms.uStrength, 'value', {
-	label: 'Strength',
-	min: -1,
-	max: 1,
-	step: 1.0,
-});
-pane
-	.addBinding(uniforms.uEdgeColor, 'value', {
-		label: 'Edge Color',
-		color: {
-			type: 'float',
-		},
-	})
-	.on('change', (val) => uniforms.uEdgeColor.value.set(new Color(val.value)));
-
 /**
  * Event
  */
@@ -225,6 +154,9 @@ function render() {
 	renderer.render(scene, camera);
 
 	const delta = clock.getDelta();
+	const elapsedTime = clock.getElapsedTime();
+
+	uniforms.uTime.value = elapsedTime;
 
 	// Update
 	controls.update(delta);
@@ -238,7 +170,11 @@ render();
 function resize() {
 	sizes.width = window.innerWidth;
 	sizes.height = window.innerHeight;
+	sizes.resolution.x = window.innerWidth;
+	sizes.resolution.y = window.innerHeight;
 	sizes.pixelratio = Math.min(2, window.devicePixelRatio);
+
+	uniforms.uResolution.value = sizes.resolution;
 
 	renderer.setSize(sizes.width, sizes.height);
 
