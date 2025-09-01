@@ -2,25 +2,30 @@ import {
 	ACESFilmicToneMapping,
 	AxesHelper,
 	Clock,
+	Color,
+	DirectionalLight,
 	EquirectangularReflectionMapping,
+	IcosahedronGeometry,
 	Mesh,
+	MeshStandardMaterial,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
 	Scene,
 	ShaderChunk,
-	ShaderMaterial,
 	TextureLoader,
 	Uniform,
 	Vector2,
 	WebGLRenderer,
 } from 'three';
+import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
 	GLTFLoader,
 	OrbitControls,
 	RGBELoader,
 	TrackballControls,
 } from 'three/examples/jsm/Addons.js';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
 import random2D from './shader/include/random2D.glsl?raw';
 import simplex3DNoise from './shader/include/simplex3DNoise.glsl?raw';
 import rippleFragmentShader from './shader/ripple/fragment.glsl?raw';
@@ -62,11 +67,24 @@ const rgbeLoader = new RGBELoader();
 
 const abstract = textureLoader.load('/acstract2.jpg');
 
+const floorColorTexture = textureLoader.load(
+	'/pavement_02_1k/pavement_02_diff_1k.jpg'
+);
+const floorARMTexture = textureLoader.load(
+	'/pavement_02_1k/pavement_02_arm_1k.jpg'
+);
+const floorNormalTexture = textureLoader.load(
+	'/pavement_02_1k/pavement_02_nor_gl_1k.jpg'
+);
+const floorDispTexture = textureLoader.load(
+	'/pavement_02_1k/pavement_02_disp_1k.jpg'
+);
 rgbeLoader.load('/zawiszy_czarnego_1k.hdr', (texture) => {
 	texture.mapping = EquirectangularReflectionMapping;
 
 	scene.background = texture;
 	scene.environment = texture;
+	scene.environmentIntensity = 0.05;
 });
 
 /**
@@ -105,6 +123,9 @@ controls2.noPan = true;
 controls2.noZoom = false;
 controls2.dynamicDampingFactor = 0.2;
 
+const stats = new Stats();
+el.append(stats.dom);
+
 /**
  * Uniforms
  */
@@ -121,18 +142,43 @@ const uniforms = {
  */
 
 const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
-const floorMaterial = new ShaderMaterial({
+const floorMaterial = new CustomShaderMaterial({
+	baseMaterial: MeshStandardMaterial,
 	uniforms,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
+	map: floorColorTexture,
+	displacementMap: floorDispTexture,
+	displacementScale: 0.05,
+	normalMap: floorNormalTexture,
+	aoMap: floorARMTexture,
+	roughnessMap: floorARMTexture,
+	metalnessMap: floorARMTexture,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
+floor.receiveShadow = true;
+floor.castShadow = true;
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
+
+const test = new Mesh(
+	new IcosahedronGeometry(0.2, 3),
+	new MeshStandardMaterial({
+		color: new Color('red'),
+	})
+);
+test.position.set(0, 1.1, 0);
+test.castShadow = true;
+scene.add(test);
 
 /**
  * Lights
  */
+
+const directionalLight = new DirectionalLight(0xffffff);
+directionalLight.position.set(3, 3, 0);
+directionalLight.castShadow = true;
+scene.add(directionalLight);
 
 /**
  * Helpers
@@ -153,14 +199,16 @@ function render() {
 	// Render
 	renderer.render(scene, camera);
 
+	// Time
 	const delta = clock.getDelta();
 	const elapsedTime = clock.getElapsedTime();
-
-	uniforms.uTime.value = elapsedTime;
 
 	// Update
 	controls.update(delta);
 	controls2.update();
+	stats.update();
+
+	uniforms.uTime.value = elapsedTime;
 
 	// Animation
 	requestAnimationFrame(render);

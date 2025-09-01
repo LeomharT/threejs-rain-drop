@@ -15,7 +15,6 @@ precision highp float;
 
 #include <simplex3DNoise>
 
-varying vec3 vPosition;
 varying vec2 vUv;
 
 uniform float uTime;
@@ -78,9 +77,11 @@ void main() {
     vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
 
 
-    color = texture2D(uAbstract, uv/resolution - intensity * n.xy).rgb 
+    color = vec3(0.0)
     + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
 
-    gl_FragColor = vec4(color, 1.0);
+    if(csm_Roughness < 1.01) {
+        csm_DiffuseColor += vec4(color, 1.0);
+    }
 }
  
