@@ -144,7 +144,6 @@ const floorMaterial = new CustomShaderMaterial({
 	uniforms,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
-	normalMap: floorNormal,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;

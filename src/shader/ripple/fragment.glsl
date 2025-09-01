@@ -50,9 +50,8 @@ void main() {
     vec2  uv         = vUv * resolution * uRippleCircleScale;
     vec2  p0         = floor(uv);
 
-    vec2 roughnessUV        = vUv * 2.0;
-    vec4 groundWetMaskColor = texture2D(uGroundWetMask, roughnessUV);
-    vec4 roughnessMapColor  = texture2D(uRoughnessMap, roughnessUV);
+    vec4 groundWetMaskColor = texture2D(uGroundWetMask, vUv);
+    vec4 roughnessMapColor  = texture2D(uRoughnessMap, vUv);
 
     for (int j = -MAX_RADIUS; j <= MAX_RADIUS; ++j) {
         for (int i = -MAX_RADIUS; i <= MAX_RADIUS; ++i) {
@@ -82,7 +81,7 @@ void main() {
     }
 
     circles /= float((MAX_RADIUS * 2 + 1) * (MAX_RADIUS * 2 + 1));
-    circles *= step(0.9, groundWetMaskColor.r);
+    circles *= groundWetMaskColor.r;
 
     float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05 * uTime + 0.5)*2.-1.)));
     vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
