@@ -6,6 +6,7 @@ import {
 	EquirectangularReflectionMapping,
 	Mesh,
 	MeshStandardMaterial,
+	MirroredRepeatWrapping,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
@@ -67,6 +68,8 @@ const rgbeLoader = new RGBELoader();
 
 const floorNormal = textureLoader.load('/floorNormal.jpg');
 const floorRoughness = textureLoader.load('/Ground_Wet_002_roughness.jpg');
+floorRoughness.wrapS = floorRoughness.wrapT = MirroredRepeatWrapping;
+
 const floorMask = textureLoader.load('/Ground_Wet_002_mask.jpg');
 floorMask.wrapS = floorMask.wrapT = RepeatWrapping;
 
@@ -87,7 +90,7 @@ const renderer = new WebGLRenderer({
 	antialias: true,
 });
 renderer.setSize(sizes.width, sizes.height);
-renderer.setPixelRatio(sizes.pixelratio);
+renderer.setPixelRatio(1.0);
 renderer.toneMapping = ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
