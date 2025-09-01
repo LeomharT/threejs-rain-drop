@@ -41,7 +41,7 @@ void main() {
     vec3  color      = vec3(0.4);
     vec2  circles    = vec2(0.);
     float resolution = 10.0 * exp2(-3.0 * 0.0 / uResolution.x);
-    vec2  uv         = gl_FragCoord.xy / uResolution.y * resolution;
+    vec2  uv         = vUv * resolution;
     vec2  p0         = floor(uv);
 
 
@@ -74,7 +74,7 @@ void main() {
 
     circles /= float((MAX_RADIUS*2+1)*(MAX_RADIUS*2+1));
 
-    float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05*uTime + 0.5)*2.-1.)));
+    float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05 * uTime + 0.5)*2.-1.)));
     vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
 
 
