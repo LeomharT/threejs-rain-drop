@@ -222,6 +222,11 @@ pane.element.parentElement!.style.width = '380px';
  */
 
 function render() {
+	uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
+	uniforms.uTextureMatrix.value = (
+		floorMirror.material as ShaderMaterial
+	).uniforms.textureMatrix.value;
+
 	// Render
 	renderer.render(scene, camera);
 
@@ -235,10 +240,6 @@ function render() {
 	stats.update();
 
 	uniforms.uTime.value = elapsedTime;
-	uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
-	uniforms.uTextureMatrix.value = (
-		floorMirror.material as ShaderMaterial
-	).uniforms.textureMatrix.value;
 
 	// Animation
 	requestAnimationFrame(render);
