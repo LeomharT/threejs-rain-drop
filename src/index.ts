@@ -3,16 +3,18 @@ import {
 	Clock,
 	Color,
 	DirectionalLight,
+	IcosahedronGeometry,
+	Matrix4,
 	Mesh,
 	MeshStandardMaterial,
-	MirroredRepeatWrapping,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
 	ReinhardToneMapping,
-	RepeatWrapping,
 	Scene,
 	ShaderChunk,
+	ShaderMaterial,
+	Texture,
 	TextureLoader,
 	Uniform,
 	Vector2,
@@ -22,6 +24,7 @@ import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
 	GLTFLoader,
 	OrbitControls,
+	Reflector,
 	RGBELoader,
 	TrackballControls,
 } from 'three/examples/jsm/Addons.js';
@@ -61,17 +64,15 @@ const gltfLoader = new GLTFLoader();
 gltfLoader.setPath('/src/assets/models/');
 
 const rgbeLoader = new RGBELoader();
+rgbeLoader.setPath('/src/assets/hdr/');
 
 /**
  * Textures
  */
 
-const floorNormal = textureLoader.load('/Ground_Normal.jpg');
-const floorRoughness = textureLoader.load('/Ground_Wet_002_roughness.jpg');
-floorRoughness.wrapS = floorRoughness.wrapT = MirroredRepeatWrapping;
-
-const floorMask = textureLoader.load('/Ground_Wet_002_mask.jpg');
-floorMask.wrapS = floorMask.wrapT = RepeatWrapping;
+const floorNormal = textureLoader.load('/normal.png');
+const floorRoughness = textureLoader.load('/roughness.jpg');
+const floorMask = textureLoader.load('/opacity.jpg');
 
 /**
  * Basic
@@ -122,9 +123,12 @@ const uniforms = {
 	uTime: new Uniform(0),
 
 	uGroundWetMask: new Uniform(floorMask),
-
-	uRippleCircleScale: new Uniform(2.5),
 	uRoughnessMap: new Uniform(floorRoughness),
+	uGroundNormal: new Uniform(floorNormal),
+	uGroundReflection: new Uniform<Texture | null>(null),
+	uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
+
+	uRippleCircleScale: new Uniform(4.5),
 };
 
 /**
@@ -136,9 +140,9 @@ const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
 const floorMaterial = new CustomShaderMaterial({
 	baseMaterial: MeshStandardMaterial,
 	uniforms,
+	normalMap: floorNormal,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
-	normalMap: floorNormal,
 	color: 0x1e1e1e,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
@@ -147,11 +151,33 @@ floor.castShadow = true;
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
+// Reflection
+const reflectionGeometry = floorGeometry.clone();
+const floorMirror = new Reflector(reflectionGeometry, {
+	clipBias: 0.003,
+	textureWidth: 1024,
+	textureHeight: 1024,
+	color: 0xb5b5b5,
+});
+floorMirror.rotation.x = -Math.PI / 2;
+floorMirror.position.y = -0.01;
+console.log(floorMirror);
+scene.add(floorMirror);
+
+// Test
+const testGeometry = new IcosahedronGeometry(0.1, 3);
+const testMaterial = new MeshStandardMaterial({
+	color: 'yellow',
+});
+const test = new Mesh(testGeometry, testMaterial);
+test.position.y = 0.25;
+scene.add(test);
+
 /**
  * Lights
  */
 
-const directionalLight = new DirectionalLight(0x90e0ef, 1.0);
+const directionalLight = new DirectionalLight(0x94d2bd, 1.0);
 directionalLight.position.set(-3, 3, -3);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
@@ -209,6 +235,10 @@ function render() {
 	stats.update();
 
 	uniforms.uTime.value = elapsedTime;
+	uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
+	uniforms.uTextureMatrix.value = (
+		floorMirror.material as ShaderMaterial
+	).uniforms.textureMatrix.value;
 
 	// Animation
 	requestAnimationFrame(render);

@@ -16,7 +16,8 @@ precision highp float;
 #include <simplex3DNoise>
 
 varying vec2 vUv;
-varying vec3 vPosition;
+varying vec4 vPosition;
+varying vec4 vReflectUV;
 
 uniform float uTime;
 uniform float uRippleCircleScale;
@@ -25,7 +26,7 @@ uniform vec2 uResolution;
 
 uniform sampler2D uRoughnessMap;
 uniform sampler2D uGroundWetMask;
-
+uniform sampler2D uGroundReflection;
 
 
 float hash12(vec2 p)
@@ -52,6 +53,7 @@ void main() {
 
     vec4 groundWetMaskColor = texture2D(uGroundWetMask, vUv);
     vec4 roughnessMapColor  = texture2D(uRoughnessMap, vUv);
+    vec4 groundReflection   = texture2DProj(uGroundReflection, vReflectUV);
 
     for (int j = -MAX_RADIUS; j <= MAX_RADIUS; ++j) {
         for (int i = -MAX_RADIUS; i <= MAX_RADIUS; ++i) {
@@ -81,7 +83,9 @@ void main() {
     }
 
     circles /= float((MAX_RADIUS * 2 + 1) * (MAX_RADIUS * 2 + 1));
-    circles *= groundWetMaskColor.r;
+
+    float circlesOpacity = smoothstep(0.9, 1.0, groundWetMaskColor.r);
+    circles *= circlesOpacity;
 
     float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05 * uTime + 0.5)*2.-1.)));
     vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
@@ -91,6 +95,8 @@ void main() {
     color = vec3(0.0)
     + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
 
+    color += groundReflection.rgb * circlesOpacity;
+
     csm_DiffuseColor += vec4(color, 1.0);
-  }
+}
  
