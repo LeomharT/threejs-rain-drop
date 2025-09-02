@@ -1,15 +1,15 @@
 import {
-	ACESFilmicToneMapping,
 	AxesHelper,
 	Clock,
+	Color,
 	DirectionalLight,
-	EquirectangularReflectionMapping,
 	Mesh,
 	MeshStandardMaterial,
 	MirroredRepeatWrapping,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
+	ReinhardToneMapping,
 	RepeatWrapping,
 	Scene,
 	ShaderChunk,
@@ -73,14 +73,6 @@ floorRoughness.wrapS = floorRoughness.wrapT = MirroredRepeatWrapping;
 const floorMask = textureLoader.load('/Ground_Wet_002_mask.jpg');
 floorMask.wrapS = floorMask.wrapT = RepeatWrapping;
 
-rgbeLoader.load('/zawiszy_czarnego_1k.hdr', (texture) => {
-	texture.mapping = EquirectangularReflectionMapping;
-
-	scene.background = texture;
-	scene.environment = texture;
-	scene.environmentIntensity = 0.05;
-});
-
 /**
  * Basic
  */
@@ -91,13 +83,14 @@ const renderer = new WebGLRenderer({
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(1.0);
-renderer.toneMapping = ACESFilmicToneMapping;
+renderer.toneMapping = ReinhardToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = PCFSoftShadowMap;
 el.append(renderer.domElement);
 
 const scene = new Scene();
+scene.background = new Color('#1e1e1e');
 
 const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000);
 camera.position.set(3, 3, 3);
@@ -144,6 +137,7 @@ const floorMaterial = new CustomShaderMaterial({
 	uniforms,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
+	color: 0x000000,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;
@@ -155,7 +149,7 @@ scene.add(floor);
  * Lights
  */
 
-const directionalLight = new DirectionalLight(0xffffff, 1.0);
+const directionalLight = new DirectionalLight(0xcaf0f8, 1.0);
 directionalLight.position.set(-3, 3, -3);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
@@ -179,6 +173,12 @@ pane.addBinding(uniforms.uRippleCircleScale, 'value', {
 	min: 0.1,
 	max: 5.0,
 	step: 0.001,
+});
+pane.addBinding(directionalLight, 'color', {
+	label: 'Light Color',
+	color: {
+		type: 'float',
+	},
 });
 
 /**
