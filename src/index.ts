@@ -66,7 +66,7 @@ const rgbeLoader = new RGBELoader();
  * Textures
  */
 
-const floorNormal = textureLoader.load('/floorNormal.jpg');
+const floorNormal = textureLoader.load('/Ground_Normal.jpg');
 const floorRoughness = textureLoader.load('/Ground_Wet_002_roughness.jpg');
 floorRoughness.wrapS = floorRoughness.wrapT = MirroredRepeatWrapping;
 
@@ -131,13 +131,15 @@ const uniforms = {
  * World
  */
 
+// Floor
 const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
 const floorMaterial = new CustomShaderMaterial({
 	baseMaterial: MeshStandardMaterial,
 	uniforms,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
-	color: 0x000000,
+	normalMap: floorNormal,
+	color: 0x1e1e1e,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;
@@ -149,7 +151,7 @@ scene.add(floor);
  * Lights
  */
 
-const directionalLight = new DirectionalLight(0xcaf0f8, 1.0);
+const directionalLight = new DirectionalLight(0x90e0ef, 1.0);
 directionalLight.position.set(-3, 3, -3);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
@@ -168,18 +170,26 @@ scene.add(axesHelper);
 const pane = new Pane({ title: 'Debug Params' });
 pane.element.parentElement!.style.width = '380px';
 
-pane.addBinding(uniforms.uRippleCircleScale, 'value', {
-	label: 'CircleScale',
-	min: 0.1,
-	max: 5.0,
-	step: 0.001,
-});
-pane.addBinding(directionalLight, 'color', {
-	label: 'Light Color',
-	color: {
-		type: 'float',
-	},
-});
+// Rain
+{
+	const folder = pane.addFolder({ title: '🌧️ Rain' });
+	folder.addBinding(uniforms.uRippleCircleScale, 'value', {
+		label: 'CircleScale',
+		min: 0.1,
+		max: 5.0,
+		step: 0.001,
+	});
+}
+// Light
+{
+	const folder = pane.addFolder({ title: '💡 Light' });
+	folder.addBinding(directionalLight, 'color', {
+		label: 'Light Color',
+		color: {
+			type: 'float',
+		},
+	});
+}
 
 /**
  * Event
