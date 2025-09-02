@@ -164,14 +164,23 @@ floorMirror.position.y = -0.01;
 console.log(floorMirror);
 scene.add(floorMirror);
 
+uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
+uniforms.uTextureMatrix.value = (
+	floorMirror.material as ShaderMaterial
+).uniforms.textureMatrix.value;
+
 // Test
-const testGeometry = new IcosahedronGeometry(0.1, 3);
-const testMaterial = new MeshStandardMaterial({
-	color: 'yellow',
+gltfLoader.load('/suzanne.glb', (data) => {
+	const suzanne = data.scene.children[0] as Mesh;
+	suzanne.scale.setScalar(0.25);
+	suzanne.position.y = 0.35;
+
+	suzanne.material = new MeshStandardMaterial({
+		color: 'yellow',
+	});
+
+	scene.add(suzanne);
 });
-const test = new Mesh(testGeometry, testMaterial);
-test.position.y = 0.25;
-scene.add(test);
 
 /**
  * Lights
@@ -187,6 +196,7 @@ scene.add(directionalLight);
  */
 
 const axesHelper = new AxesHelper();
+axesHelper.visible = false;
 scene.add(axesHelper);
 
 /**
@@ -222,11 +232,6 @@ pane.element.parentElement!.style.width = '380px';
  */
 
 function render() {
-	uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
-	uniforms.uTextureMatrix.value = (
-		floorMirror.material as ShaderMaterial
-	).uniforms.textureMatrix.value;
-
 	// Render
 	renderer.render(scene, camera);
 
