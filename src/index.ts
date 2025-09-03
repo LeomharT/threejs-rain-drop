@@ -129,27 +129,15 @@ const uniforms = {
 	uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
 	uRippleCircleScale: new Uniform(4.5),
+
+	uCameraProjectionMatrix: new Uniform(new Matrix4()),
+	uCameraMatrixWorldInverse: new Uniform(new Matrix4()),
 };
 
 /**
  * World
  */
-
-// Floor
 const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
-const floorMaterial = new CustomShaderMaterial({
-	baseMaterial: MeshStandardMaterial,
-	uniforms,
-	normalMap: floorNormal,
-	vertexShader: rippleVertexShader,
-	fragmentShader: rippleFragmentShader,
-	color: 0x1e1e1e,
-});
-const floor = new Mesh(floorGeometry, floorMaterial);
-floor.receiveShadow = true;
-floor.castShadow = true;
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
 
 // Reflection
 const reflectionGeometry = floorGeometry.clone();
@@ -160,8 +148,23 @@ const floorMirror = new Reflector(reflectionGeometry, {
 	color: 0xb5b5b5,
 });
 floorMirror.rotation.x = -Math.PI / 2;
-floorMirror.position.y = -0.01;
+floorMirror.position.y = -0.001;
 scene.add(floorMirror);
+
+// Floor
+const floorMaterial = new CustomShaderMaterial({
+	baseMaterial: MeshStandardMaterial,
+	uniforms,
+	// normalMap: floorNormal,
+	vertexShader: rippleVertexShader,
+	fragmentShader: rippleFragmentShader,
+	color: 0x1e1e1e,
+});
+const floor = new Mesh(floorGeometry, floorMaterial);
+floor.receiveShadow = true;
+floor.castShadow = true;
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
 
 uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
 uniforms.uTextureMatrix.value = (
@@ -253,7 +256,13 @@ function render() {
 	controls2.update();
 	stats.update();
 
+	floorMirror.camera.updateMatrixWorld();
+	floorMirror.camera.updateProjectionMatrix();
+
 	uniforms.uTime.value = elapsedTime;
+	uniforms.uCameraProjectionMatrix.value = floorMirror.camera.projectionMatrix;
+	uniforms.uCameraMatrixWorldInverse.value =
+		floorMirror.camera.matrixWorldInverse;
 
 	// Animation
 	requestAnimationFrame(render);
