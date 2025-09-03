@@ -129,9 +129,6 @@ const uniforms = {
 	uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
 	uRippleCircleScale: new Uniform(4.5),
-
-	uCameraProjectionMatrix: new Uniform(new Matrix4()),
-	uCameraMatrixWorldInverse: new Uniform(new Matrix4()),
 };
 
 /**
@@ -213,7 +210,7 @@ const fpsGraph: any = pane.addBlade({
 	label: undefined,
 	rows: 3,
 	min: 30,
-	max: 120,
+	max: 80,
 });
 
 // Rain
@@ -256,13 +253,7 @@ function render() {
 	controls2.update();
 	stats.update();
 
-	floorMirror.camera.updateMatrixWorld();
-	floorMirror.camera.updateProjectionMatrix();
-
 	uniforms.uTime.value = elapsedTime;
-	uniforms.uCameraProjectionMatrix.value = floorMirror.camera.projectionMatrix;
-	uniforms.uCameraMatrixWorldInverse.value =
-		floorMirror.camera.matrixWorldInverse;
 
 	// Animation
 	requestAnimationFrame(render);
