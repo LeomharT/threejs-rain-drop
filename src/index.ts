@@ -1,9 +1,9 @@
+import * as TweakpaneEssentialsPlugin from '@tweakpane/plugin-essentials';
 import {
 	AxesHelper,
 	Clock,
 	Color,
 	DirectionalLight,
-	IcosahedronGeometry,
 	Matrix4,
 	Mesh,
 	MeshStandardMaterial,
@@ -161,7 +161,6 @@ const floorMirror = new Reflector(reflectionGeometry, {
 });
 floorMirror.rotation.x = -Math.PI / 2;
 floorMirror.position.y = -0.01;
-console.log(floorMirror);
 scene.add(floorMirror);
 
 uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
@@ -196,7 +195,6 @@ scene.add(directionalLight);
  */
 
 const axesHelper = new AxesHelper();
-axesHelper.visible = false;
 scene.add(axesHelper);
 
 /**
@@ -204,7 +202,16 @@ scene.add(axesHelper);
  */
 
 const pane = new Pane({ title: 'Debug Params' });
+pane.registerPlugin(TweakpaneEssentialsPlugin);
 pane.element.parentElement!.style.width = '380px';
+
+const fpsGraph: any = pane.addBlade({
+	view: 'fpsgraph',
+	label: undefined,
+	rows: 3,
+	min: 30,
+	max: 120,
+});
 
 // Rain
 {
@@ -232,6 +239,8 @@ pane.element.parentElement!.style.width = '380px';
  */
 
 function render() {
+	fpsGraph.begin();
+
 	// Render
 	renderer.render(scene, camera);
 
@@ -248,6 +257,8 @@ function render() {
 
 	// Animation
 	requestAnimationFrame(render);
+
+	fpsGraph.end();
 }
 render();
 

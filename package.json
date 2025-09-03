@@ -15,6 +15,7 @@
 		"vite": "^6.3.5"
 	},
 	"dependencies": {
+		"@tweakpane/plugin-essentials": "^0.2.1",
 		"three": "^0.177.0",
 		"three-custom-shader-material": "^6.3.7",
 		"tweakpane": "^4.0.5"
