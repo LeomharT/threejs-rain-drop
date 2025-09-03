@@ -155,7 +155,7 @@ scene.add(floorMirror);
 const floorMaterial = new CustomShaderMaterial({
 	baseMaterial: MeshStandardMaterial,
 	uniforms,
-	// normalMap: floorNormal,
+	normalMap: floorNormal,
 	vertexShader: rippleVertexShader,
 	fragmentShader: rippleFragmentShader,
 	color: 0x1e1e1e,
