@@ -84,6 +84,7 @@ rgbeLoader.setPath('/src/assets/hdr/');
 rgbeLoader.load('cobblestone_street_night_1k.hdr', (data) => {
 	data.mapping = EquirectangularReflectionMapping;
 
+	scene.environment = data;
 	scene.background = data;
 });
 
@@ -204,6 +205,7 @@ gltfLoader.load('/suzanne.glb', (data) => {
 });
 
 // Rain
+// Rain refract https://threejs.org/examples/#webgl_effects_stereo
 const frameTexture = new WebGLRenderTarget(
 	sizes.width * 0.1,
 	sizes.height * 0.1,
@@ -226,7 +228,7 @@ const rainParams: {
 	progress: number[];
 	speed: number[];
 } = {
-	count: 3000,
+	count: 5000,
 	progress: [],
 	speed: [],
 };
