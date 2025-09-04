@@ -4,6 +4,7 @@ import {
 	Clock,
 	Color,
 	DirectionalLight,
+	InstancedBufferAttribute,
 	InstancedMesh,
 	MathUtils,
 	Matrix4,
@@ -22,6 +23,7 @@ import {
 	Uniform,
 	Vector2,
 	WebGLRenderer,
+	WebGLRenderTarget,
 } from 'three';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
@@ -49,6 +51,8 @@ type ShaderLab = typeof ShaderChunk & {
 
 (ShaderChunk as ShaderLab)['random2D'] = random2D;
 (ShaderChunk as ShaderLab)['simplex3DNoise'] = simplex3DNoise;
+
+const RAIN_LAYER = 2;
 
 const el = document.querySelector('#root') as HTMLDivElement;
 
@@ -80,6 +84,8 @@ const floorNormal = textureLoader.load('/normal.png');
 const floorRoughness = textureLoader.load('/roughness.jpg');
 const floorMask = textureLoader.load('/opacity.jpg');
 
+const rainNormal = textureLoader.load('/rainNormal.png');
+
 /**
  * Basic
  */
@@ -102,6 +108,7 @@ scene.background = new Color('#1e1e1e');
 const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000);
 camera.position.set(3, 3, 3);
 camera.lookAt(scene.position);
+camera.layers.enable(RAIN_LAYER);
 
 const clock = new Clock();
 
@@ -110,6 +117,8 @@ controls.enableDamping = true;
 controls.enableRotate = true;
 controls.enablePan = false;
 controls.enableZoom = false;
+controls.maxPolarAngle = Math.PI / 2.25;
+controls.minPolarAngle = 0;
 
 const controls2 = new TrackballControls(camera, renderer.domElement);
 controls2.noRotate = true;
@@ -188,15 +197,49 @@ gltfLoader.load('/suzanne.glb', (data) => {
 });
 
 // Rain
+const frameTexture = new WebGLRenderTarget(
+	sizes.width * window.devicePixelRatio,
+	sizes.height * window.devicePixelRatio,
+	{}
+);
+const frameCamera = camera.clone();
 
-const rainParams = {
-	count: 300,
+const rainUniforms = {
+	uTime: new Uniform(0.0),
+	uSpeed: new Uniform(1.0),
+	uHeightRange: new Uniform(20),
+	uRefraction: new Uniform(0.1),
+	uBaseBrightness: new Uniform(0.1),
+	uNormalTexture: new Uniform(rainNormal),
+	uBgRT: new Uniform<Texture>(frameTexture.texture),
 };
+
+const rainParams: {
+	count: number;
+	progress: number[];
+	speed: number[];
+} = {
+	count: 3000,
+	progress: [],
+	speed: [],
+};
+
+function updateFrameTexture() {
+	rain.visible = false;
+
+	renderer.setRenderTarget(frameTexture);
+	renderer.render(scene, frameCamera);
+	renderer.setRenderTarget(null);
+
+	rain.visible = true;
+}
 
 const rainGeometry = new PlaneGeometry();
 const rainMaterial = new ShaderMaterial({
 	vertexShader: rainVertexShader,
 	fragmentShader: rainFragmentShader,
+	uniforms: rainUniforms,
+	transparent: true,
 });
 
 const objectRef = new Object3D();
@@ -205,14 +248,36 @@ const rain = new InstancedMesh(rainGeometry, rainMaterial, rainParams.count);
 scene.add(rain);
 
 for (let i = 0; i < rainParams.count; i++) {
+	// Rain Matrix
 	objectRef.position.set(
 		MathUtils.randFloat(-10, 10),
 		0,
 		MathUtils.randFloat(-20, 10)
 	);
+	objectRef.scale.set(0.03, MathUtils.randFloat(0.3, 0.5), 0.03);
+
 	objectRef.updateMatrix();
+
+	// Rain Progress
+	rainParams.progress.push(Math.random());
+
+	// Rain Speed
+	rainParams.speed.push(objectRef.scale.y * 1.0);
+
 	rain.setMatrixAt(i, objectRef.matrix);
 }
+
+rain.layers.set(RAIN_LAYER);
+rain.rotation.set(-0.1, 0, 0.1);
+rain.position.set(0, 4, 4);
+rain.geometry.setAttribute(
+	'aProgress',
+	new InstancedBufferAttribute(new Float32Array(rainParams.progress), 1)
+);
+rain.geometry.setAttribute(
+	'aSpeed',
+	new InstancedBufferAttribute(new Float32Array(rainParams.speed), 1)
+);
 
 /**
  * Lights
@@ -275,6 +340,8 @@ function render() {
 	fpsGraph.begin();
 
 	// Render
+	updateFrameTexture();
+
 	renderer.render(scene, camera);
 
 	// Time
@@ -287,6 +354,7 @@ function render() {
 	stats.update();
 
 	uniforms.uTime.value = elapsedTime;
+	rainUniforms.uTime.value = elapsedTime;
 
 	// Animation
 	requestAnimationFrame(render);
