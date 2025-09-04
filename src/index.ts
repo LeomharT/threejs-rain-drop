@@ -140,8 +140,8 @@ const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
 const reflectionGeometry = floorGeometry.clone();
 const floorMirror = new Reflector(reflectionGeometry, {
 	clipBias: 0.003,
-	textureWidth: 1024,
-	textureHeight: 1024,
+	textureWidth: 512,
+	textureHeight: 512,
 	color: 0xb5b5b5,
 });
 floorMirror.rotation.x = -Math.PI / 2;
