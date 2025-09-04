@@ -4,9 +4,12 @@ import {
 	Clock,
 	Color,
 	DirectionalLight,
+	InstancedMesh,
+	MathUtils,
 	Matrix4,
 	Mesh,
 	MeshStandardMaterial,
+	Object3D,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
@@ -32,8 +35,11 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Pane } from 'tweakpane';
 import random2D from './shader/include/random2D.glsl?raw';
 import simplex3DNoise from './shader/include/simplex3DNoise.glsl?raw';
+import rainFragmentShader from './shader/rain/fragment.glsl?raw';
+import rainVertexShader from './shader/rain/vertex.glsl?raw';
 import rippleFragmentShader from './shader/ripple/fragment.glsl?raw';
 import rippleVertexShader from './shader/ripple/vertex.glsl?raw';
+
 import './style.css';
 
 type ShaderLab = typeof ShaderChunk & {
@@ -168,7 +174,7 @@ uniforms.uTextureMatrix.value = (
 	floorMirror.material as ShaderMaterial
 ).uniforms.textureMatrix.value;
 
-// Test
+// Monkey
 gltfLoader.load('/suzanne.glb', (data) => {
 	const suzanne = data.scene.children[0] as Mesh;
 	suzanne.scale.setScalar(0.25);
@@ -180,6 +186,33 @@ gltfLoader.load('/suzanne.glb', (data) => {
 
 	scene.add(suzanne);
 });
+
+// Rain
+
+const rainParams = {
+	count: 300,
+};
+
+const rainGeometry = new PlaneGeometry();
+const rainMaterial = new ShaderMaterial({
+	vertexShader: rainVertexShader,
+	fragmentShader: rainFragmentShader,
+});
+
+const objectRef = new Object3D();
+
+const rain = new InstancedMesh(rainGeometry, rainMaterial, rainParams.count);
+scene.add(rain);
+
+for (let i = 0; i < rainParams.count; i++) {
+	objectRef.position.set(
+		MathUtils.randFloat(-10, 10),
+		0,
+		MathUtils.randFloat(-20, 10)
+	);
+	objectRef.updateMatrix();
+	rain.setMatrixAt(i, objectRef.matrix);
+}
 
 /**
  * Lights
