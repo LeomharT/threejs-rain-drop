@@ -4,6 +4,7 @@ import {
 	Clock,
 	Color,
 	DirectionalLight,
+	EquirectangularReflectionMapping,
 	InstancedBufferAttribute,
 	InstancedMesh,
 	MathUtils,
@@ -79,6 +80,12 @@ rgbeLoader.setPath('/src/assets/hdr/');
 /**
  * Textures
  */
+
+rgbeLoader.load('cobblestone_street_night_1k.hdr', (data) => {
+	data.mapping = EquirectangularReflectionMapping;
+
+	scene.background = data;
+});
 
 const floorNormal = textureLoader.load('/normal.png');
 const floorRoughness = textureLoader.load('/roughness.jpg');
@@ -206,7 +213,7 @@ const frameCamera = camera.clone();
 
 const rainUniforms = {
 	uTime: new Uniform(0.0),
-	uSpeed: new Uniform(1.0),
+	uSpeed: new Uniform(10.0),
 	uHeightRange: new Uniform(20),
 	uRefraction: new Uniform(0.1),
 	uBaseBrightness: new Uniform(0.1),
@@ -247,16 +254,16 @@ const objectRef = new Object3D();
 const rain = new InstancedMesh(rainGeometry, rainMaterial, rainParams.count);
 scene.add(rain);
 
-const debug = true;
+const debug = false;
 
 for (let i = 0; i < rainParams.count; i++) {
 	// Rain Matrix
 	objectRef.position.set(
-		MathUtils.randFloat(-10, 10),
+		MathUtils.randFloat(-5, 5),
 		0,
-		MathUtils.randFloat(-20, 10)
+		MathUtils.randFloat(-15, 5)
 	);
-	objectRef.scale.set(0.03, MathUtils.randFloat(0.3, 0.5), 0.03);
+	objectRef.scale.set(0.01, MathUtils.randFloat(0.2, 0.4), 0.01);
 
 	if (debug) {
 		objectRef.scale.set(1, 1, 1);
@@ -300,6 +307,7 @@ scene.add(directionalLight);
  */
 
 const axesHelper = new AxesHelper();
+axesHelper.visible = false;
 scene.add(axesHelper);
 
 /**
