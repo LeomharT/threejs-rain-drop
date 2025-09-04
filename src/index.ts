@@ -198,8 +198,8 @@ gltfLoader.load('/suzanne.glb', (data) => {
 
 // Rain
 const frameTexture = new WebGLRenderTarget(
-	sizes.width * window.devicePixelRatio,
-	sizes.height * window.devicePixelRatio,
+	sizes.width * 0.1,
+	sizes.height * 0.1,
 	{}
 );
 const frameCamera = camera.clone();
@@ -247,6 +247,8 @@ const objectRef = new Object3D();
 const rain = new InstancedMesh(rainGeometry, rainMaterial, rainParams.count);
 scene.add(rain);
 
+const debug = true;
+
 for (let i = 0; i < rainParams.count; i++) {
 	// Rain Matrix
 	objectRef.position.set(
@@ -255,6 +257,11 @@ for (let i = 0; i < rainParams.count; i++) {
 		MathUtils.randFloat(-20, 10)
 	);
 	objectRef.scale.set(0.03, MathUtils.randFloat(0.3, 0.5), 0.03);
+
+	if (debug) {
+		objectRef.scale.set(1, 1, 1);
+		rainUniforms.uSpeed.value = 0;
+	}
 
 	objectRef.updateMatrix();
 
@@ -320,6 +327,12 @@ const fpsGraph: any = pane.addBlade({
 		max: 5.0,
 		step: 0.001,
 	});
+	folder.addBinding(rainUniforms.uRefraction, 'value', {
+		label: 'Refraction',
+		min: -1.0,
+		max: 1.0,
+		step: 0.001,
+	});
 }
 // Light
 {
@@ -341,7 +354,6 @@ function render() {
 
 	// Render
 	updateFrameTexture();
-
 	renderer.render(scene, camera);
 
 	// Time
