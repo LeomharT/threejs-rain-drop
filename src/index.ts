@@ -351,7 +351,7 @@ const fpsGraph: any = pane.addBlade({
 	});
 	folder.addBinding(rain.position, 'y', {
 		label: 'Rain Position Y',
-		min: 0,
+		min: -10,
 		max: 10,
 		step: 0.01,
 	});
