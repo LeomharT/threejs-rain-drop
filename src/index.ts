@@ -157,7 +157,7 @@ const uniforms = {
 /**
  * World
  */
-const floorGeometry = new PlaneGeometry(3, 3, 128, 128);
+const floorGeometry = new PlaneGeometry(5, 5, 128, 128);
 
 // Reflection
 const reflectionGeometry = floorGeometry.clone();
@@ -342,6 +342,24 @@ const fpsGraph: any = pane.addBlade({
 		min: -1.0,
 		max: 1.0,
 		step: 0.001,
+	});
+	folder.addBinding(rain.position, 'x', {
+		label: 'Rain Position X',
+		min: 0,
+		max: 10,
+		step: 0.01,
+	});
+	folder.addBinding(rain.position, 'y', {
+		label: 'Rain Position Y',
+		min: 0,
+		max: 10,
+		step: 0.01,
+	});
+	folder.addBinding(rain.position, 'z', {
+		label: 'Rain Position Z',
+		min: 0,
+		max: 10,
+		step: 0.01,
 	});
 }
 // Light
