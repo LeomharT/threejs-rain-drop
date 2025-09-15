@@ -4,18 +4,20 @@ import {
 	Clock,
 	Color,
 	DirectionalLight,
-	EquirectangularReflectionMapping,
 	InstancedBufferAttribute,
 	InstancedMesh,
+	LinearFilter,
 	MathUtils,
 	Matrix4,
 	Mesh,
+	MeshPhysicalMaterial,
 	MeshStandardMaterial,
+	NearestMipMapLinearFilter,
 	Object3D,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
-	ReinhardToneMapping,
+	RepeatWrapping,
 	Scene,
 	ShaderChunk,
 	ShaderMaterial,
@@ -28,11 +30,15 @@ import {
 } from 'three';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
+	EffectComposer,
 	GLTFLoader,
 	OrbitControls,
+	OutputPass,
 	Reflector,
+	RenderPass,
 	RGBELoader,
 	TrackballControls,
+	UnrealBloomPass,
 } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Pane } from 'tweakpane';
@@ -81,18 +87,15 @@ rgbeLoader.setPath('/src/assets/hdr/');
  * Textures
  */
 
-rgbeLoader.load('cobblestone_street_night_1k.hdr', (data) => {
-	data.mapping = EquirectangularReflectionMapping;
-
-	scene.environment = data;
-	scene.background = data;
-});
-
 const floorNormal = textureLoader.load('/normal.png');
 const floorRoughness = textureLoader.load('/roughness.jpg');
 const floorMask = textureLoader.load('/opacity.jpg');
 
 const rainNormal = textureLoader.load('/rainNormal.png');
+
+const breakNormal = textureLoader.load('/brick-normal2.jpg');
+breakNormal.wrapS = breakNormal.wrapT = RepeatWrapping;
+breakNormal.repeat.set(2, 2);
 
 /**
  * Basic
@@ -104,8 +107,6 @@ const renderer = new WebGLRenderer({
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(1.0);
-renderer.toneMapping = ReinhardToneMapping;
-renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = PCFSoftShadowMap;
 el.append(renderer.domElement);
@@ -114,7 +115,7 @@ const scene = new Scene();
 scene.background = new Color('#1e1e1e');
 
 const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000);
-camera.position.set(3, 3, 3);
+camera.position.set(0, 0, 1);
 camera.lookAt(scene.position);
 camera.layers.enable(RAIN_LAYER);
 
@@ -137,6 +138,29 @@ controls2.dynamicDampingFactor = 0.2;
 const stats = new Stats();
 el.append(stats.dom);
 
+/**
+ * Post progressing
+ */
+
+const composer = new EffectComposer(renderer);
+composer.setSize(sizes.width, sizes.height);
+composer.setPixelRatio(sizes.pixelratio);
+
+// Render pass
+const renderPass = new RenderPass(scene, camera);
+// Bloom pass
+const bloomPass = new UnrealBloomPass(
+	new Vector2(sizes.width, sizes.height),
+	2.011,
+	0.935,
+	0.424
+);
+// Output pass
+const outputPass = new OutputPass();
+
+composer.addPass(renderPass);
+composer.addPass(bloomPass);
+composer.addPass(outputPass);
 /**
  * Uniforms
  */
@@ -207,9 +231,13 @@ gltfLoader.load('/suzanne.glb', (data) => {
 // Rain
 // Rain refract https://threejs.org/examples/#webgl_effects_stereo
 const frameTexture = new WebGLRenderTarget(
-	sizes.width * 0.1,
-	sizes.height * 0.1,
-	{}
+	sizes.width * 1.0,
+	sizes.height * 1.0,
+	{
+		magFilter: LinearFilter,
+		minFilter: NearestMipMapLinearFilter,
+		generateMipmaps: true,
+	}
 );
 const frameCamera = camera.clone();
 
@@ -217,7 +245,7 @@ const rainUniforms = {
 	uTime: new Uniform(0.0),
 	uSpeed: new Uniform(10.0),
 	uHeightRange: new Uniform(20),
-	uRefraction: new Uniform(0.1),
+	uRefraction: new Uniform(0.05),
 	uBaseBrightness: new Uniform(0.1),
 	uNormalTexture: new Uniform(rainNormal),
 	uBgRT: new Uniform<Texture>(frameTexture.texture),
@@ -285,7 +313,7 @@ for (let i = 0; i < rainParams.count; i++) {
 
 rain.layers.set(RAIN_LAYER);
 rain.rotation.set(-0.1, 0, 0.1);
-rain.position.set(0, 4, 4);
+rain.position.set(0, 1.0, 4);
 rain.geometry.setAttribute(
 	'aProgress',
 	new InstancedBufferAttribute(new Float32Array(rainParams.progress), 1)
@@ -295,12 +323,45 @@ rain.geometry.setAttribute(
 	new InstancedBufferAttribute(new Float32Array(rainParams.speed), 1)
 );
 
+// Walls
+
+const wallGeometry = new PlaneGeometry(5, 5, 128, 128);
+
+// Back Wall
+const backWallMaterial = new MeshPhysicalMaterial({
+	normalMap: breakNormal,
+});
+const backWall = new Mesh(wallGeometry, backWallMaterial);
+backWall.position.y = 2.5;
+backWall.position.z = -2.5;
+scene.add(backWall);
+
+// Left Wall
+const leftWallMaterial = new MeshStandardMaterial({});
+const leftWall = new Mesh(wallGeometry, leftWallMaterial);
+leftWall.position.x = -2.5;
+leftWall.position.y = 2.5;
+leftWall.rotation.y = Math.PI / 2;
+scene.add(leftWall);
+
+// Right Wall
+const rightWallMaterial = new MeshStandardMaterial({});
+const rightWall = new Mesh(wallGeometry, rightWallMaterial);
+rightWall.position.x = 2.5;
+rightWall.position.y = 2.5;
+rightWall.rotation.y = -Math.PI / 2;
+scene.add(rightWall);
+
+/**
+ * Debug
+ */
+
 /**
  * Lights
  */
 
-const directionalLight = new DirectionalLight(0x94d2bd, 1.0);
-directionalLight.position.set(-3, 3, -3);
+const directionalLight = new DirectionalLight('#ffffff', 1.0);
+directionalLight.position.set(3, 3, 3);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
@@ -339,9 +400,9 @@ const fpsGraph: any = pane.addBlade({
 	});
 	folder.addBinding(rainUniforms.uRefraction, 'value', {
 		label: 'Refraction',
-		min: -1.0,
-		max: 1.0,
-		step: 0.001,
+		min: 0,
+		max: 0.1,
+		step: 0.0001,
 	});
 	folder.addBinding(rain.position, 'x', {
 		label: 'Rain Position X',
@@ -380,13 +441,13 @@ const fpsGraph: any = pane.addBlade({
 function render() {
 	fpsGraph.begin();
 
-	// Render
-	updateFrameTexture();
-	renderer.render(scene, camera);
-
 	// Time
 	const delta = clock.getDelta();
 	const elapsedTime = clock.getElapsedTime();
+
+	// Render
+	updateFrameTexture();
+	composer.render(delta);
 
 	// Update
 	controls.update(delta);

@@ -14,10 +14,9 @@ void main() {
 
     if(normalColor.a < 0.5) discard;
 
-    vec3 normal = normalColor.rgb;
-    normal = normalize(normal);
-
-    vec2 bgUV = vScreenspace + normal.xy * uRefraction;
+    vec3 normal = normalize(normalColor.rgb);
+ 
+    vec2 bgUV    = vScreenspace + normal.xy * uRefraction;
     vec4 bgColor = texture2D(uBgRT, bgUV);
 
     float brightness = uBaseBrightness * pow(normal.b, 10.0);
@@ -25,4 +24,7 @@ void main() {
     color = bgColor.rgb + vec3(brightness);
  
     gl_FragColor = vec4(color,  1.0);
+
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
 }
