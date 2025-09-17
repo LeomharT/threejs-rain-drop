@@ -159,7 +159,6 @@ const bloomPass = new UnrealBloomPass(
 const outputPass = new OutputPass();
 
 composer.addPass(renderPass);
-composer.addPass(bloomPass);
 composer.addPass(outputPass);
 /**
  * Uniforms
@@ -239,7 +238,6 @@ const frameTexture = new WebGLRenderTarget(
 		generateMipmaps: true,
 	}
 );
-const frameCamera = camera.clone();
 
 const rainUniforms = {
 	uTime: new Uniform(0.0),
@@ -265,7 +263,7 @@ function updateFrameTexture() {
 	rain.visible = false;
 
 	renderer.setRenderTarget(frameTexture);
-	renderer.render(scene, frameCamera);
+	renderer.render(scene, camera);
 	renderer.setRenderTarget(null);
 
 	rain.visible = true;

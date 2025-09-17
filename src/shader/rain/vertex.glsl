@@ -43,9 +43,10 @@ void main() {
     transformed = distort(transformed);
     
     #include <project_vertex>
-    
+
+    vec3 ndc = gl_Position.xyz / gl_Position.w;
 
     // Varying
     vUv          = uv;
-    vScreenspace = screenspace(projectionMatrix, modelViewMatrix, transformed);
+    vScreenspace = ndc.xy * 0.5 + 0.5;
 }
