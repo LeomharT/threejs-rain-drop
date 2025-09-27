@@ -44,6 +44,7 @@ void main() {
     
     #include <project_vertex>
 
+    // NDC normalize device coord
     vec3 ndc = gl_Position.xyz / gl_Position.w;
 
     // Varying
