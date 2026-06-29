@@ -176,7 +176,7 @@ const bloomPass = new UnrealBloomPass(
   new Vector2(sizes.width, sizes.height),
   0.004,
   0.5,
-  0,
+  0.0,
 );
 
 const mixPass = new ShaderPass(
@@ -270,7 +270,7 @@ gltfLoader.load('/suzanne.glb', (data) => {
   suzanne.position.y = 0.35;
 
   suzanne.material = new MeshBasicMaterial({
-    color: new Color('yellow').multiplyScalar(50),
+    color: new Color('yellow'),
   });
 
   suzanne.layers.set(LAYERS.BLOOM);
@@ -409,7 +409,7 @@ scene.add(rightWall);
  * Lights
  */
 
-const directionalLight = new DirectionalLight('#ffffff', 1.0);
+const directionalLight = new DirectionalLight('#ffffff', 0.1);
 directionalLight.position.set(0, 3, 0);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
@@ -444,7 +444,7 @@ const fpsGraph: any = pane.addBlade({
   folder.addBinding(uniforms.uRippleCircleScale, 'value', {
     label: 'CircleScale',
     min: 0.1,
-    max: 5.0,
+    max: 20.0,
     step: 0.001,
   });
   folder.addBinding(rainUniforms.uRefraction, 'value', {
@@ -497,7 +497,7 @@ const fpsGraph: any = pane.addBlade({
   });
   f.addBinding(bloomPass, 'threshold', {
     min: 0,
-    max: 1,
+    max: 10,
     step: 0.001,
   });
 }
@@ -516,10 +516,7 @@ function render() {
 
   updateFrameTexture();
 
-  scene.traverse(darkenMaterial);
   bloomComposer.render(delta);
-  scene.traverse(restoreMaterial);
-
   composer.render(delta);
 
   // Update
@@ -529,8 +526,6 @@ function render() {
 
   uniforms.uTime.value = elapsedTime;
   rainUniforms.uTime.value = elapsedTime;
-
-  scene.environment = pmrem.fromScene(scene).texture;
 
   // Animation
   requestAnimationFrame(render);

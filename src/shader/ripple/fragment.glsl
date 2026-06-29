@@ -45,7 +45,7 @@ vec2 hash22(vec2 p)
 }
 
 void main() {
-    vec3  color      = vec3(0.4);
+    vec3  color      = vec3(0.0);
     vec2  circles    = vec2(0.0);
     float resolution = 10.0 * exp2(-3.0 * 0.0 / uResolution.x);
     vec2  uv         = vUv * resolution * uRippleCircleScale;
@@ -88,12 +88,14 @@ void main() {
     circles *= circlesOpacity;
 
     float intensity = mix(0.01, 0.15, smoothstep(0.1, 0.6, abs(fract(0.05 * uTime + 0.5)*2.-1.)));
-    vec3 n = vec3(circles, sqrt(1. - dot(circles, circles)));
+    vec3 n = normalize(vec3(circles * 0.5, 1.0));
+
+    csm_FragNormal = n;
 
     csm_Roughness = roughnessMapColor.r;
 
-    color = vec3(0.0)
-    + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
+    // color = vec3(0.0)
+    // + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
 
     color += groundReflection.rgb * circlesOpacity;
 
