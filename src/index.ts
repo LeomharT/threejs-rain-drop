@@ -19,6 +19,7 @@ import {
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
+  PMREMGenerator,
   RepeatWrapping,
   Scene,
   ShaderChunk,
@@ -198,6 +199,9 @@ const outputPass = new OutputPass();
 composer.addPass(renderPass);
 composer.addPass(mixPass);
 composer.addPass(outputPass);
+
+const pmrem = new PMREMGenerator(composer.renderer);
+pmrem.compileEquirectangularShader();
 
 /**
  * Uniforms
@@ -525,6 +529,8 @@ function render() {
 
   uniforms.uTime.value = elapsedTime;
   rainUniforms.uTime.value = elapsedTime;
+
+  scene.environment = pmrem.fromScene(scene).texture;
 
   // Animation
   requestAnimationFrame(render);
