@@ -1,74 +1,91 @@
 import * as TweakpaneEssentialsPlugin from '@tweakpane/plugin-essentials';
 import {
-	AxesHelper,
-	Clock,
-	Color,
-	DirectionalLight,
-	InstancedBufferAttribute,
-	InstancedMesh,
-	LinearFilter,
-	MathUtils,
-	Matrix4,
-	Mesh,
-	MeshPhysicalMaterial,
-	MeshStandardMaterial,
-	NearestMipMapLinearFilter,
-	Object3D,
-	PCFSoftShadowMap,
-	PerspectiveCamera,
-	PlaneGeometry,
-	RepeatWrapping,
-	Scene,
-	ShaderChunk,
-	ShaderMaterial,
-	Texture,
-	TextureLoader,
-	Uniform,
-	Vector2,
-	WebGLRenderer,
-	WebGLRenderTarget,
+  AxesHelper,
+  Color,
+  DirectionalLight,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Layers,
+  LinearFilter,
+  Material,
+  MathUtils,
+  Matrix4,
+  Mesh,
+  MeshBasicMaterial,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  NearestMipMapLinearFilter,
+  Object3D,
+  PCFShadowMap,
+  PerspectiveCamera,
+  PlaneGeometry,
+  RepeatWrapping,
+  Scene,
+  ShaderChunk,
+  ShaderMaterial,
+  Texture,
+  TextureLoader,
+  Timer,
+  Uniform,
+  Vector2,
+  WebGLRenderer,
+  WebGLRenderTarget,
 } from 'three';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
-	EffectComposer,
-	GLTFLoader,
-	OrbitControls,
-	OutputPass,
-	Reflector,
-	RenderPass,
-	RGBELoader,
-	TrackballControls,
-	UnrealBloomPass,
+  EffectComposer,
+  GLTFLoader,
+  HDRLoader,
+  OrbitControls,
+  OutputPass,
+  Reflector,
+  RenderPass,
+  ShaderPass,
+  TrackballControls,
+  UnrealBloomPass,
 } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Pane } from 'tweakpane';
+import bloomFragmentShader from './shader/bloom/fragment.glsl?raw';
+import bloomVertexShader from './shader/bloom/vertex.glsl?raw';
 import random2D from './shader/include/random2D.glsl?raw';
 import simplex3DNoise from './shader/include/simplex3DNoise.glsl?raw';
 import rainFragmentShader from './shader/rain/fragment.glsl?raw';
 import rainVertexShader from './shader/rain/vertex.glsl?raw';
 import rippleFragmentShader from './shader/ripple/fragment.glsl?raw';
 import rippleVertexShader from './shader/ripple/vertex.glsl?raw';
-
 import './style.css';
 
 type ShaderLab = typeof ShaderChunk & {
-	random2D: string;
-	simplex3DNoise: string;
+  random2D: string;
+  simplex3DNoise: string;
 };
 
 (ShaderChunk as ShaderLab)['random2D'] = random2D;
 (ShaderChunk as ShaderLab)['simplex3DNoise'] = simplex3DNoise;
 
-const RAIN_LAYER = 2;
+const LAYERS = {
+  BLOOM: 1,
+  RAIN: 2,
+};
+
+const BLOOM_LAYER = new Layers();
+BLOOM_LAYER.set(LAYERS.BLOOM);
+
+const RAIN_LAYER = new Layers();
+RAIN_LAYER.enable(LAYERS.RAIN);
 
 const el = document.querySelector('#root') as HTMLDivElement;
 
 const sizes = {
-	width: window.innerWidth,
-	height: window.innerHeight,
-	pixelratio: Math.min(2, window.devicePixelRatio),
-	resolution: new Vector2(window.innerWidth, window.innerHeight),
+  width: window.innerWidth,
+  height: window.innerHeight,
+  pixelratio: Math.min(2, window.devicePixelRatio),
+  resolution: new Vector2(window.innerWidth, window.innerHeight),
 };
+
+const materials: Record<string, Material> = {};
+const darkMaterial = new MeshBasicMaterial({ color: '#000' });
 
 /**
  * Loader
@@ -80,8 +97,8 @@ textureLoader.setPath('/src/assets/textures');
 const gltfLoader = new GLTFLoader();
 gltfLoader.setPath('/src/assets/models/');
 
-const rgbeLoader = new RGBELoader();
-rgbeLoader.setPath('/src/assets/hdr/');
+const hdrLoader = new HDRLoader();
+hdrLoader.setPath('/src/assets/hdr/');
 
 /**
  * Textures
@@ -102,24 +119,25 @@ breakNormal.repeat.set(2, 2);
  */
 
 const renderer = new WebGLRenderer({
-	alpha: true,
-	antialias: true,
+  alpha: true,
+  antialias: true,
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(1.0);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = PCFSoftShadowMap;
+renderer.shadowMap.type = PCFShadowMap;
 el.append(renderer.domElement);
 
 const scene = new Scene();
-scene.background = new Color('#1e1e1e');
+scene.background = new Color('#000');
 
 const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000);
 camera.position.set(0, 0, 1);
 camera.lookAt(scene.position);
-camera.layers.enable(RAIN_LAYER);
+camera.layers.enable(LAYERS.BLOOM);
+camera.layers.enable(LAYERS.RAIN);
 
-const clock = new Clock();
+const timer = new Timer();
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -146,35 +164,56 @@ const composer = new EffectComposer(renderer);
 composer.setSize(sizes.width, sizes.height);
 composer.setPixelRatio(sizes.pixelratio);
 
-// Render pass
+const bloomComposer = new EffectComposer(renderer);
+bloomComposer.renderToScreen = false;
+bloomComposer.setSize(sizes.width, sizes.height);
+bloomComposer.setPixelRatio(sizes.pixelratio);
+
 const renderPass = new RenderPass(scene, camera);
-// Bloom pass
+
 const bloomPass = new UnrealBloomPass(
-	new Vector2(sizes.width, sizes.height),
-	2.011,
-	0.935,
-	0.424
+  new Vector2(sizes.width, sizes.height),
+  0.004,
+  0.5,
+  0,
 );
-// Output pass
+
+const mixPass = new ShaderPass(
+  new ShaderMaterial({
+    uniforms: {
+      uDiffuse: new Uniform(null),
+      uBloomTexture: new Uniform(bloomComposer.renderTarget2.texture),
+    },
+    vertexShader: bloomVertexShader,
+    fragmentShader: bloomFragmentShader,
+  }),
+  'uDiffuse',
+);
+
+bloomComposer.addPass(renderPass);
+bloomComposer.addPass(bloomPass);
+
 const outputPass = new OutputPass();
 
 composer.addPass(renderPass);
+composer.addPass(mixPass);
 composer.addPass(outputPass);
+
 /**
  * Uniforms
  */
 
 const uniforms = {
-	uResolution: new Uniform(sizes.resolution),
-	uTime: new Uniform(0),
+  uResolution: new Uniform(sizes.resolution),
+  uTime: new Uniform(0),
 
-	uGroundWetMask: new Uniform(floorMask),
-	uRoughnessMap: new Uniform(floorRoughness),
-	uGroundNormal: new Uniform(floorNormal),
-	uGroundReflection: new Uniform<Texture | null>(null),
-	uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
+  uGroundWetMask: new Uniform(floorMask),
+  uRoughnessMap: new Uniform(floorRoughness),
+  uGroundNormal: new Uniform(floorNormal),
+  uGroundReflection: new Uniform<Texture | null>(null),
+  uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
-	uRippleCircleScale: new Uniform(4.5),
+  uRippleCircleScale: new Uniform(4.5),
 };
 
 /**
@@ -185,23 +224,27 @@ const floorGeometry = new PlaneGeometry(5, 5, 128, 128);
 // Reflection
 const reflectionGeometry = floorGeometry.clone();
 const floorMirror = new Reflector(reflectionGeometry, {
-	clipBias: 0.003,
-	textureWidth: 512,
-	textureHeight: 512,
-	color: 0xb5b5b5,
+  clipBias: 0.003,
+  textureWidth: 512,
+  textureHeight: 512,
+  color: 0xb5b5b5,
 });
 floorMirror.rotation.x = -Math.PI / 2;
 floorMirror.position.y = -0.001;
+const original = floorMirror.onBeforeRender.bind(floorMirror);
+floorMirror.onBeforeRender = (...args) => {
+  original(...args);
+};
 scene.add(floorMirror);
 
 // Floor
 const floorMaterial = new CustomShaderMaterial({
-	baseMaterial: MeshStandardMaterial,
-	uniforms,
-	normalMap: floorNormal,
-	vertexShader: rippleVertexShader,
-	fragmentShader: rippleFragmentShader,
-	color: 0x1e1e1e,
+  baseMaterial: MeshStandardMaterial,
+  uniforms,
+  normalMap: floorNormal,
+  vertexShader: rippleVertexShader,
+  fragmentShader: rippleFragmentShader,
+  color: 0x1e1e1e,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;
@@ -211,70 +254,75 @@ scene.add(floor);
 
 uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
 uniforms.uTextureMatrix.value = (
-	floorMirror.material as ShaderMaterial
+  floorMirror.material as ShaderMaterial
 ).uniforms.textureMatrix.value;
 
 // Monkey
+let monkey: Mesh | undefined;
+
 gltfLoader.load('/suzanne.glb', (data) => {
-	const suzanne = data.scene.children[0] as Mesh;
-	suzanne.scale.setScalar(0.25);
-	suzanne.position.y = 0.35;
+  const suzanne = data.scene.children[0] as Mesh;
+  suzanne.scale.setScalar(0.25);
+  suzanne.position.y = 0.35;
 
-	suzanne.material = new MeshStandardMaterial({
-		color: 'yellow',
-	});
+  suzanne.material = new MeshBasicMaterial({
+    color: new Color('yellow').multiplyScalar(50),
+  });
 
-	scene.add(suzanne);
+  suzanne.layers.set(LAYERS.BLOOM);
+  monkey = suzanne;
+
+  scene.add(suzanne);
 });
 
 // Rain
 // Rain refract https://threejs.org/examples/#webgl_effects_stereo
 const frameTexture = new WebGLRenderTarget(
-	sizes.width * 1.0,
-	sizes.height * 1.0,
-	{
-		magFilter: LinearFilter,
-		minFilter: NearestMipMapLinearFilter,
-		generateMipmaps: true,
-	}
+  sizes.width * 1.0,
+  sizes.height * 1.0,
+  {
+    magFilter: LinearFilter,
+    minFilter: NearestMipMapLinearFilter,
+    generateMipmaps: true,
+  },
 );
 
 const rainUniforms = {
-	uTime: new Uniform(0.0),
-	uSpeed: new Uniform(10.0),
-	uHeightRange: new Uniform(20),
-	uRefraction: new Uniform(0.05),
-	uBaseBrightness: new Uniform(0.1),
-	uNormalTexture: new Uniform(rainNormal),
-	uBgRT: new Uniform<Texture>(frameTexture.texture),
+  uTime: new Uniform(0.0),
+  uSpeed: new Uniform(10.0),
+  uHeightRange: new Uniform(20),
+  uRefraction: new Uniform(0.05),
+  uBaseBrightness: new Uniform(0.1),
+  uNormalTexture: new Uniform(rainNormal),
+  uBgRT: new Uniform<Texture>(frameTexture.texture),
 };
 
 const rainParams: {
-	count: number;
-	progress: number[];
-	speed: number[];
+  count: number;
+  progress: number[];
+  speed: number[];
 } = {
-	count: 5000,
-	progress: [],
-	speed: [],
+  count: 5000,
+  progress: [],
+  speed: [],
 };
 
 function updateFrameTexture() {
-	rain.visible = false;
+  camera.layers.disable(LAYERS.RAIN);
 
-	renderer.setRenderTarget(frameTexture);
-	renderer.render(scene, camera);
-	renderer.setRenderTarget(null);
+  renderer.setRenderTarget(frameTexture);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
 
-	rain.visible = true;
+  camera.layers.enable(LAYERS.RAIN);
 }
 
 const rainGeometry = new PlaneGeometry();
 const rainMaterial = new ShaderMaterial({
-	vertexShader: rainVertexShader,
-	fragmentShader: rainFragmentShader,
-	uniforms: rainUniforms,
-	transparent: true,
+  vertexShader: rainVertexShader,
+  fragmentShader: rainFragmentShader,
+  uniforms: rainUniforms,
+  transparent: true,
 });
 
 const objectRef = new Object3D();
@@ -285,49 +333,48 @@ scene.add(rain);
 const debug = false;
 
 for (let i = 0; i < rainParams.count; i++) {
-	// Rain Matrix
-	objectRef.position.set(
-		MathUtils.randFloat(-5, 5),
-		0,
-		MathUtils.randFloat(-15, 5)
-	);
-	objectRef.scale.set(0.01, MathUtils.randFloat(0.2, 0.4), 0.01);
+  // Rain Matrix
+  objectRef.position.set(
+    MathUtils.randFloat(-5, 5),
+    0,
+    MathUtils.randFloat(-15, 5),
+  );
+  objectRef.scale.set(0.01, MathUtils.randFloat(0.2, 0.4), 0.01);
 
-	if (debug) {
-		objectRef.scale.set(1, 1, 1);
-		rainUniforms.uSpeed.value = 0;
-	}
+  if (debug) {
+    objectRef.scale.set(1, 1, 1);
+    rainUniforms.uSpeed.value = 0;
+  }
 
-	objectRef.updateMatrix();
+  objectRef.updateMatrix();
 
-	// Rain Progress
-	rainParams.progress.push(Math.random());
+  // Rain Progress
+  rainParams.progress.push(Math.random());
 
-	// Rain Speed
-	rainParams.speed.push(objectRef.scale.y * 1.0);
+  // Rain Speed
+  rainParams.speed.push(objectRef.scale.y * 1.0);
 
-	rain.setMatrixAt(i, objectRef.matrix);
+  rain.setMatrixAt(i, objectRef.matrix);
 }
 
-rain.layers.set(RAIN_LAYER);
+rain.layers.set(LAYERS.RAIN);
 rain.rotation.set(-0.1, 0, 0.1);
 rain.position.set(0, 1.0, 4);
 rain.geometry.setAttribute(
-	'aProgress',
-	new InstancedBufferAttribute(new Float32Array(rainParams.progress), 1)
+  'aProgress',
+  new InstancedBufferAttribute(new Float32Array(rainParams.progress), 1),
 );
 rain.geometry.setAttribute(
-	'aSpeed',
-	new InstancedBufferAttribute(new Float32Array(rainParams.speed), 1)
+  'aSpeed',
+  new InstancedBufferAttribute(new Float32Array(rainParams.speed), 1),
 );
 
 // Walls
-
 const wallGeometry = new PlaneGeometry(5, 5, 128, 128);
 
 // Back Wall
 const backWallMaterial = new MeshPhysicalMaterial({
-	normalMap: breakNormal,
+  normalMap: breakNormal,
 });
 const backWall = new Mesh(wallGeometry, backWallMaterial);
 backWall.position.y = 2.5;
@@ -359,7 +406,7 @@ scene.add(rightWall);
  */
 
 const directionalLight = new DirectionalLight('#ffffff', 1.0);
-directionalLight.position.set(3, 3, 3);
+directionalLight.position.set(0, 3, 0);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
@@ -380,56 +427,75 @@ pane.registerPlugin(TweakpaneEssentialsPlugin);
 pane.element.parentElement!.style.width = '380px';
 
 const fpsGraph: any = pane.addBlade({
-	view: 'fpsgraph',
-	label: undefined,
-	rows: 3,
-	min: 30,
-	max: 80,
+  view: 'fpsgraph',
+  label: undefined,
+  rows: 3,
+  min: 30,
+  max: 80,
 });
 
 // Rain
 {
-	const folder = pane.addFolder({ title: '🌧️ Rain' });
-	folder.addBinding(uniforms.uRippleCircleScale, 'value', {
-		label: 'CircleScale',
-		min: 0.1,
-		max: 5.0,
-		step: 0.001,
-	});
-	folder.addBinding(rainUniforms.uRefraction, 'value', {
-		label: 'Refraction',
-		min: 0,
-		max: 0.1,
-		step: 0.0001,
-	});
-	folder.addBinding(rain.position, 'x', {
-		label: 'Rain Position X',
-		min: 0,
-		max: 10,
-		step: 0.01,
-	});
-	folder.addBinding(rain.position, 'y', {
-		label: 'Rain Position Y',
-		min: -10,
-		max: 10,
-		step: 0.01,
-	});
-	folder.addBinding(rain.position, 'z', {
-		label: 'Rain Position Z',
-		min: 0,
-		max: 10,
-		step: 0.01,
-	});
+  const folder = pane.addFolder({ title: '🌧️ Rain' });
+  folder.addBinding(uniforms.uRippleCircleScale, 'value', {
+    label: 'CircleScale',
+    min: 0.1,
+    max: 5.0,
+    step: 0.001,
+  });
+  folder.addBinding(rainUniforms.uRefraction, 'value', {
+    label: 'Refraction',
+    min: 0,
+    max: 0.1,
+    step: 0.0001,
+  });
+  folder.addBinding(rain.position, 'x', {
+    label: 'Rain Position X',
+    min: 0,
+    max: 10,
+    step: 0.01,
+  });
+  folder.addBinding(rain.position, 'y', {
+    label: 'Rain Position Y',
+    min: -10,
+    max: 10,
+    step: 0.01,
+  });
+  folder.addBinding(rain.position, 'z', {
+    label: 'Rain Position Z',
+    min: 0,
+    max: 10,
+    step: 0.01,
+  });
 }
 // Light
 {
-	const folder = pane.addFolder({ title: '💡 Light' });
-	folder.addBinding(directionalLight, 'color', {
-		label: 'Light Color',
-		color: {
-			type: 'float',
-		},
-	});
+  const folder = pane.addFolder({ title: '💡 Light' });
+  folder.addBinding(directionalLight, 'color', {
+    label: 'Light Color',
+    color: {
+      type: 'float',
+    },
+  });
+}
+// Bloom
+{
+  const f = pane.addFolder({ title: 'Bloom' });
+  f.addBinding(bloomPass, 'radius', {
+    min: 0,
+    max: 1,
+    step: 0.001,
+  });
+  f.addBinding(bloomPass, 'strength', {
+    min: 0,
+    max: 1,
+    step: 0.001,
+  });
+  f.addBinding(bloomPass, 'threshold', {
+    min: 0,
+    max: 1,
+    step: 0.001,
+  });
 }
 
 /**
@@ -437,44 +503,63 @@ const fpsGraph: any = pane.addBlade({
  */
 
 function render() {
-	fpsGraph.begin();
+  fpsGraph.begin();
 
-	// Time
-	const delta = clock.getDelta();
-	const elapsedTime = clock.getElapsedTime();
+  // Time
+  timer.update();
+  const delta = timer.getDelta();
+  const elapsedTime = timer.getElapsed();
 
-	// Render
-	updateFrameTexture();
-	composer.render(delta);
+  updateFrameTexture();
 
-	// Update
-	controls.update(delta);
-	controls2.update();
-	stats.update();
+  scene.traverse(darkenMaterial);
+  bloomComposer.render(delta);
+  scene.traverse(restoreMaterial);
 
-	uniforms.uTime.value = elapsedTime;
-	rainUniforms.uTime.value = elapsedTime;
+  composer.render(delta);
 
-	// Animation
-	requestAnimationFrame(render);
+  // Update
+  controls2.update();
+  controls.update(delta);
+  stats.update();
 
-	fpsGraph.end();
+  uniforms.uTime.value = elapsedTime;
+  rainUniforms.uTime.value = elapsedTime;
+
+  // Animation
+  requestAnimationFrame(render);
+
+  fpsGraph.end();
 }
 render();
 
 function resize() {
-	sizes.width = window.innerWidth;
-	sizes.height = window.innerHeight;
-	sizes.resolution.x = window.innerWidth;
-	sizes.resolution.y = window.innerHeight;
-	sizes.pixelratio = Math.min(2, window.devicePixelRatio);
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+  sizes.resolution.x = window.innerWidth;
+  sizes.resolution.y = window.innerHeight;
+  sizes.pixelratio = Math.min(2, window.devicePixelRatio);
 
-	uniforms.uResolution.value = sizes.resolution;
+  uniforms.uResolution.value = sizes.resolution;
 
-	renderer.setSize(sizes.width, sizes.height);
+  renderer.setSize(sizes.width, sizes.height);
 
-	camera.aspect = sizes.width / sizes.height;
-	camera.updateProjectionMatrix();
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
 }
 
 window.addEventListener('resize', resize);
+
+function darkenMaterial(obj: Object3D) {
+  if (obj instanceof Mesh && !BLOOM_LAYER.test(obj.layers)) {
+    materials[obj.uuid] = obj.material;
+    obj.material = darkMaterial;
+  }
+}
+
+function restoreMaterial(obj: Object3D) {
+  if (obj instanceof Mesh && materials[obj.uuid]) {
+    obj.material = materials[obj.uuid];
+    delete materials[obj.uuid];
+  }
+}
