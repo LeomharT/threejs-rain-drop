@@ -2,7 +2,6 @@ import * as TweakpaneEssentialsPlugin from '@tweakpane/plugin-essentials';
 import {
   AxesHelper,
   Color,
-  CubeCamera,
   DirectionalLight,
   InstancedBufferAttribute,
   InstancedMesh,
@@ -52,7 +51,6 @@ import {
   UnrealBloomPass,
 } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { CubeRenderTarget } from 'three/webgpu';
 import { Pane } from 'tweakpane';
 import bloomFragmentShader from './shader/bloom/fragment.glsl?raw';
 import bloomVertexShader from './shader/bloom/vertex.glsl?raw';
@@ -142,7 +140,7 @@ const scene = new Scene();
 scene.background = new Color('#000');
 
 const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000);
-camera.position.set(0, 0.5, 3);
+camera.position.set(-0.2, 0.5, 1);
 camera.lookAt(scene.position);
 camera.layers.enable(LAYERS.BLOOM);
 camera.layers.enable(LAYERS.RAIN);
@@ -211,13 +209,6 @@ composer.addPass(mixPass);
 composer.addPass(fxaa);
 composer.addPass(outputPass);
 
-const cubeRenderTarget = new CubeRenderTarget(512, {
-  generateMipmaps: true,
-  minFilter: LinearFilter,
-  magFilter: LinearFilter,
-});
-const cuebCamera = new CubeCamera(0.1, 100, cubeRenderTarget);
-
 /**
  * Uniforms
  */
@@ -232,9 +223,9 @@ const uniforms = {
   uGroundReflection: new Uniform<Texture | null>(null),
   uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
-  uRippleCircleScale: new Uniform(4.5),
-  uDistortionAmount: new Uniform(0.025),
-  uBlurStrength: new Uniform(2),
+  uRippleCircleScale: new Uniform(15.049),
+  uDistortionAmount: new Uniform(0.088),
+  uBlurStrength: new Uniform(5.894),
 };
 
 /**
@@ -252,13 +243,6 @@ const floorMirror = new Reflector(reflectionGeometry, {
 });
 floorMirror.rotation.x = -Math.PI / 2;
 floorMirror.position.y = -0.001;
-
-const originalOnBeforeRender = floorMirror.onBeforeRender.bind(floorMirror);
-floorMirror.onBeforeRender = (...args) => {
-  // ring.material = m;
-  originalOnBeforeRender(...args);
-  // ring.material = m1;
-};
 scene.add(floorMirror);
 
 // Floor
@@ -281,15 +265,11 @@ uniforms.uGroundReflection.value.magFilter = LinearFilter;
 uniforms.uTextureMatrix.value = (
   floorMirror.material as ShaderMaterial
 ).uniforms.textureMatrix.value;
-const m = new MeshBasicMaterial({
-  color: new Color().setRGB(0.9, 0.9, 0.45).multiplyScalar(50),
-});
-const m1 = new MeshBasicMaterial({
-  color: new Color().setRGB(0.9, 0.9, 0.45),
-});
 
-const ringGeometry = new TorusGeometry(1.0, 0.051, 32, 100);
-const ringMaterial = m1;
+const ringGeometry = new TorusGeometry(0.8, 0.03, 32, 100);
+const ringMaterial = new MeshBasicMaterial({
+  color: new Color().setRGB(0.53, 0.36, 0.9),
+});
 const ring = new Mesh(ringGeometry, ringMaterial);
 scene.add(ring);
 
@@ -545,15 +525,15 @@ const f_monkey = pane.addFolder({
   title: 'Monkey',
 });
 f_monkey
-  .addBinding(m, 'color', {
+  .addBinding(ringMaterial, 'color', {
     color: { type: 'float' },
   })
   .on('change', (val) => {
-    m.color = new Color()
-      .setRGB(val.value.r, val.value.g, val.value.b)
-      .multiplyScalar(50);
-
-    m1.color = new Color().setRGB(val.value.r, val.value.g, val.value.b);
+    ringMaterial.color = new Color().setRGB(
+      val.value.r,
+      val.value.g,
+      val.value.b,
+    );
   });
 
 /**
@@ -572,7 +552,6 @@ function render() {
 
   bloomComposer.render(delta);
   composer.render(delta);
-  cuebCamera.update(renderer, scene);
 
   // Update
   controls2.update();
