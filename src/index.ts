@@ -264,7 +264,7 @@ uniforms.uTextureMatrix.value = (
 
 const ringGeometry = new TorusGeometry(0.8, 0.03, 32, 100);
 const ringMaterial = new MeshBasicMaterial({
-  color: new Color().setRGB(0.53, 0.36, 0.9),
+  color: new Color().setRGB(0.24, 0.07, 0.61),
 });
 const ring = new Mesh(ringGeometry, ringMaterial);
 scene.add(ring);
