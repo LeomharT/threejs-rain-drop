@@ -1,7 +1,6 @@
 import * as TweakpaneEssentialsPlugin from '@tweakpane/plugin-essentials';
 import {
   AxesHelper,
-  BufferGeometry,
   Color,
   CubeCamera,
   DirectionalLight,
@@ -21,25 +20,30 @@ import {
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
+  PointLight,
+  RectAreaLight,
   RepeatWrapping,
   Scene,
   ShaderChunk,
+  ShaderLib,
   ShaderMaterial,
   Texture,
   TextureLoader,
   Timer,
+  TorusGeometry,
   Uniform,
   Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
 } from 'three';
-import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
   EffectComposer,
+  FXAAPass,
   GLTFLoader,
   HDRLoader,
   OrbitControls,
   OutputPass,
+  RectAreaLightHelper,
   Reflector,
   RenderPass,
   ShaderPass,
@@ -66,6 +70,8 @@ type ShaderLab = typeof ShaderChunk & {
 
 (ShaderChunk as ShaderLab)['random2D'] = random2D;
 (ShaderChunk as ShaderLab)['simplex3DNoise'] = simplex3DNoise;
+
+console.log(ShaderLib);
 
 const LAYERS = {
   BLOOM: 1,
@@ -135,7 +141,7 @@ const scene = new Scene();
 scene.background = new Color('#000');
 
 const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000);
-camera.position.set(0, 0, 1);
+camera.position.set(0, 0.5, 3);
 camera.lookAt(scene.position);
 camera.layers.enable(LAYERS.BLOOM);
 camera.layers.enable(LAYERS.RAIN);
@@ -196,10 +202,12 @@ const mixPass = new ShaderPass(
 bloomComposer.addPass(renderPass);
 bloomComposer.addPass(bloomPass);
 
+const fxaa = new FXAAPass();
 const outputPass = new OutputPass();
 
 composer.addPass(renderPass);
 composer.addPass(mixPass);
+composer.addPass(fxaa);
 composer.addPass(outputPass);
 
 const cubeRenderTarget = new CubeRenderTarget(512, {
@@ -224,7 +232,7 @@ const uniforms = {
   uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
   uRippleCircleScale: new Uniform(4.5),
-  uDistortionAmount: new Uniform(0.25),
+  uDistortionAmount: new Uniform(0.025),
   uBlurStrength: new Uniform(2),
 };
 
@@ -244,24 +252,16 @@ const floorMirror = new Reflector(reflectionGeometry, {
 floorMirror.rotation.x = -Math.PI / 2;
 floorMirror.position.y = -0.001;
 
-const m = new MeshBasicMaterial({
-  color: new Color('yellow').multiplyScalar(50),
-});
-const m1 = new MeshBasicMaterial({
-  color: new Color('yellow'),
-});
-
 const originalOnBeforeRender = floorMirror.onBeforeRender.bind(floorMirror);
 floorMirror.onBeforeRender = (...args) => {
-  if (monkey) monkey.material = m;
+  // ring.material = m;
   originalOnBeforeRender(...args);
-  if (monkey) monkey.material = m1;
+  // ring.material = m1;
 };
 scene.add(floorMirror);
 
 // Floor
-const floorMaterial = new CustomShaderMaterial({
-  baseMaterial: MeshStandardMaterial,
+const floorMaterial = new ShaderMaterial({
   uniforms,
   vertexShader: rippleVertexShader,
   fragmentShader: rippleFragmentShader,
@@ -273,23 +273,22 @@ floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
 uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
+uniforms.uGroundReflection.value.generateMipmaps = true;
 uniforms.uTextureMatrix.value = (
   floorMirror.material as ShaderMaterial
 ).uniforms.textureMatrix.value;
 
-// Monkey
-let monkey: Mesh<BufferGeometry, MeshBasicMaterial> | undefined;
-
-gltfLoader.load('/suzanne.glb', (data) => {
-  const suzanne = data.scene.children[0] as Mesh;
-  suzanne.scale.setScalar(0.25);
-  suzanne.position.y = 0.35;
-
-  suzanne.layers.enable(LAYERS.BLOOM);
-  monkey = suzanne as Mesh<BufferGeometry, MeshBasicMaterial>;
-
-  scene.add(suzanne);
+const m = new MeshBasicMaterial({
+  color: new Color().setRGB(0.9, 0.9, 0.45).multiplyScalar(50),
 });
+const m1 = new MeshBasicMaterial({
+  color: new Color().setRGB(0.9, 0.9, 0.45),
+});
+
+const ringGeometry = new TorusGeometry(1.0, 0.051, 32, 100);
+const ringMaterial = m1;
+const ring = new Mesh(ringGeometry, ringMaterial);
+scene.add(ring);
 
 // Rain
 // Rain refract https://threejs.org/examples/#webgl_effects_stereo
@@ -403,7 +402,7 @@ const leftWall = new Mesh(wallGeometry, leftWallMaterial);
 leftWall.position.x = -2.5;
 leftWall.position.y = 2.5;
 leftWall.rotation.y = Math.PI / 2;
-scene.add(leftWall);
+// scene.add(leftWall);
 
 // Right Wall
 const rightWallMaterial = new MeshStandardMaterial({});
@@ -411,7 +410,7 @@ const rightWall = new Mesh(wallGeometry, rightWallMaterial);
 rightWall.position.x = 2.5;
 rightWall.position.y = 2.5;
 rightWall.rotation.y = -Math.PI / 2;
-scene.add(rightWall);
+// scene.add(rightWall);
 
 /**
  * Debug
@@ -422,9 +421,22 @@ scene.add(rightWall);
  */
 
 const directionalLight = new DirectionalLight('#ffffff', 0.1);
-directionalLight.position.set(0, 3, 0);
+directionalLight.position.set(0, 1, 0);
 directionalLight.castShadow = true;
-scene.add(directionalLight);
+// scene.add(directionalLight);
+
+const pointLight = new PointLight('#81C8F2', 0.05, 10);
+pointLight.position.set(0, 4, -2);
+scene.add(pointLight);
+// scene.add(new PointLightHelper(pointLight));
+
+const rectLight1 = new RectAreaLight('#89D7FF', 0.5, 4.5, 0.2);
+rectLight1.position.set(0, 2, -2.5);
+rectLight1.rotation.set(MathUtils.degToRad(90), MathUtils.degToRad(180), 0);
+scene.add(rectLight1);
+
+const rectLight1Helper = new RectAreaLightHelper(rectLight1);
+scene.add(rectLight1Helper);
 
 /**
  * Helpers
@@ -461,13 +473,13 @@ const fpsGraph: any = pane.addBlade({
   });
   folder.addBinding(rainUniforms.uRefraction, 'value', {
     label: 'Refraction',
-    min: 0,
+    min: -0.1,
     max: 0.1,
     step: 0.0001,
   });
   folder.addBinding(uniforms.uDistortionAmount, 'value', {
     label: 'Distortion Amount',
-    min: -1.0,
+    min: 0.0,
     max: 1.0,
     step: 0.001,
   });
@@ -536,7 +548,8 @@ f_monkey
   .on('change', (val) => {
     m.color = new Color()
       .setRGB(val.value.r, val.value.g, val.value.b)
-      .multiplyScalar(20);
+      .multiplyScalar(50);
+
     m1.color = new Color().setRGB(val.value.r, val.value.g, val.value.b);
   });
 

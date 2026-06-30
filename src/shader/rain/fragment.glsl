@@ -19,7 +19,7 @@ void main() {
     vec2 bgUV    = vScreenspace + normal.xy * uRefraction;
     vec4 bgColor = texture2D(uBgRT, bgUV);
 
-    float brightness = uBaseBrightness * pow(normal.b, 10.0);
+    float brightness = uBaseBrightness * pow(normal.b, 40.0);
 
     color = bgColor.rgb + vec3(brightness);
  
