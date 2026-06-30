@@ -8,6 +8,7 @@ import {
   InstancedMesh,
   Layers,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Material,
   MathUtils,
   Matrix4,
@@ -274,10 +275,12 @@ scene.add(floor);
 
 uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
 uniforms.uGroundReflection.value.generateMipmaps = true;
+uniforms.uGroundReflection.value.minFilter = LinearMipmapLinearFilter;
+uniforms.uGroundReflection.value.magFilter = LinearFilter;
+
 uniforms.uTextureMatrix.value = (
   floorMirror.material as ShaderMaterial
 ).uniforms.textureMatrix.value;
-
 const m = new MeshBasicMaterial({
   color: new Color().setRGB(0.9, 0.9, 0.45).multiplyScalar(50),
 });

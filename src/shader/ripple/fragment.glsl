@@ -125,7 +125,7 @@ void main() {
     vec2 p0 = floor(uv);
     vec2 reflectUV = vReflectUV.xy / vReflectUV.w;
 
-    float roughness = texture2D(uRoughnessMap, vUv).r;
+    float roughness = texture2D(uRoughnessMap, vUv).g;
 
     vec3 floorNormal = texture2D(uGroundNormal, vUv).rgb * 2.0 - 1.0;
     floorNormal = normalize(floorNormal);
@@ -171,7 +171,7 @@ void main() {
     vec2  finalUv = reflectUV + floorNormal.xy * uDistortionAmount - rainUv;
     float level   = roughness * uBlurStrength;
 
-    color = texture2D(uGroundReflection, finalUv).rgb;
+    color = texture2D(uGroundReflection, finalUv, level).rgb;
  
     // color = packedTexture2DLOD(uGroundReflection, finalUv, level, uResolution).rgb;
     // color = vec3(0.0)
