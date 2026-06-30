@@ -1,7 +1,9 @@
 import * as TweakpaneEssentialsPlugin from '@tweakpane/plugin-essentials';
 import {
   AxesHelper,
+  BufferGeometry,
   Color,
+  CubeCamera,
   DirectionalLight,
   InstancedBufferAttribute,
   InstancedMesh,
@@ -19,7 +21,6 @@ import {
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
-  PMREMGenerator,
   RepeatWrapping,
   Scene,
   ShaderChunk,
@@ -46,6 +47,7 @@ import {
   UnrealBloomPass,
 } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
+import { CubeRenderTarget } from 'three/webgpu';
 import { Pane } from 'tweakpane';
 import bloomFragmentShader from './shader/bloom/fragment.glsl?raw';
 import bloomVertexShader from './shader/bloom/vertex.glsl?raw';
@@ -174,7 +176,7 @@ const renderPass = new RenderPass(scene, camera);
 
 const bloomPass = new UnrealBloomPass(
   new Vector2(sizes.width, sizes.height),
-  0.004,
+  0.1,
   0.5,
   0.0,
 );
@@ -200,8 +202,12 @@ composer.addPass(renderPass);
 composer.addPass(mixPass);
 composer.addPass(outputPass);
 
-const pmrem = new PMREMGenerator(composer.renderer);
-pmrem.compileEquirectangularShader();
+const cubeRenderTarget = new CubeRenderTarget(512, {
+  generateMipmaps: true,
+  minFilter: LinearFilter,
+  magFilter: LinearFilter,
+});
+const cuebCamera = new CubeCamera(0.1, 100, cubeRenderTarget);
 
 /**
  * Uniforms
@@ -218,6 +224,8 @@ const uniforms = {
   uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
   uRippleCircleScale: new Uniform(4.5),
+  uDistortionAmount: new Uniform(0.25),
+  uBlurStrength: new Uniform(2),
 };
 
 /**
@@ -229,15 +237,25 @@ const floorGeometry = new PlaneGeometry(5, 5, 128, 128);
 const reflectionGeometry = floorGeometry.clone();
 const floorMirror = new Reflector(reflectionGeometry, {
   clipBias: 0.003,
-  textureWidth: 512,
-  textureHeight: 512,
+  textureWidth: sizes.width * sizes.pixelratio,
+  textureHeight: sizes.height * sizes.pixelratio,
   color: 0xb5b5b5,
 });
 floorMirror.rotation.x = -Math.PI / 2;
 floorMirror.position.y = -0.001;
-const original = floorMirror.onBeforeRender.bind(floorMirror);
+
+const m = new MeshBasicMaterial({
+  color: new Color('yellow').multiplyScalar(50),
+});
+const m1 = new MeshBasicMaterial({
+  color: new Color('yellow'),
+});
+
+const originalOnBeforeRender = floorMirror.onBeforeRender.bind(floorMirror);
 floorMirror.onBeforeRender = (...args) => {
-  original(...args);
+  if (monkey) monkey.material = m;
+  originalOnBeforeRender(...args);
+  if (monkey) monkey.material = m1;
 };
 scene.add(floorMirror);
 
@@ -245,10 +263,8 @@ scene.add(floorMirror);
 const floorMaterial = new CustomShaderMaterial({
   baseMaterial: MeshStandardMaterial,
   uniforms,
-  normalMap: floorNormal,
   vertexShader: rippleVertexShader,
   fragmentShader: rippleFragmentShader,
-  color: 0x1e1e1e,
 });
 const floor = new Mesh(floorGeometry, floorMaterial);
 floor.receiveShadow = true;
@@ -262,19 +278,15 @@ uniforms.uTextureMatrix.value = (
 ).uniforms.textureMatrix.value;
 
 // Monkey
-let monkey: Mesh | undefined;
+let monkey: Mesh<BufferGeometry, MeshBasicMaterial> | undefined;
 
 gltfLoader.load('/suzanne.glb', (data) => {
   const suzanne = data.scene.children[0] as Mesh;
   suzanne.scale.setScalar(0.25);
   suzanne.position.y = 0.35;
 
-  suzanne.material = new MeshBasicMaterial({
-    color: new Color('yellow'),
-  });
-
-  suzanne.layers.set(LAYERS.BLOOM);
-  monkey = suzanne;
+  suzanne.layers.enable(LAYERS.BLOOM);
+  monkey = suzanne as Mesh<BufferGeometry, MeshBasicMaterial>;
 
   scene.add(suzanne);
 });
@@ -418,7 +430,7 @@ scene.add(directionalLight);
  * Helpers
  */
 
-const axesHelper = new AxesHelper();
+const axesHelper = new AxesHelper(10);
 axesHelper.visible = false;
 scene.add(axesHelper);
 
@@ -452,6 +464,18 @@ const fpsGraph: any = pane.addBlade({
     min: 0,
     max: 0.1,
     step: 0.0001,
+  });
+  folder.addBinding(uniforms.uDistortionAmount, 'value', {
+    label: 'Distortion Amount',
+    min: -1.0,
+    max: 1.0,
+    step: 0.001,
+  });
+  folder.addBinding(uniforms.uBlurStrength, 'value', {
+    label: 'Blur Strength',
+    min: -10,
+    max: 10,
+    step: 0.001,
   });
   folder.addBinding(rain.position, 'x', {
     label: 'Rain Position X',
@@ -502,6 +526,20 @@ const fpsGraph: any = pane.addBlade({
   });
 }
 
+const f_monkey = pane.addFolder({
+  title: 'Monkey',
+});
+f_monkey
+  .addBinding(m, 'color', {
+    color: { type: 'float' },
+  })
+  .on('change', (val) => {
+    m.color = new Color()
+      .setRGB(val.value.r, val.value.g, val.value.b)
+      .multiplyScalar(20);
+    m1.color = new Color().setRGB(val.value.r, val.value.g, val.value.b);
+  });
+
 /**
  * Event
  */
@@ -518,6 +556,7 @@ function render() {
 
   bloomComposer.render(delta);
   composer.render(delta);
+  cuebCamera.update(renderer, scene);
 
   // Update
   controls2.update();
