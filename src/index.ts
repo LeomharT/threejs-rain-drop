@@ -8,7 +8,6 @@ import {
   Layers,
   LinearFilter,
   LinearMipmapLinearFilter,
-  Material,
   MathUtils,
   Matrix4,
   Mesh,
@@ -91,9 +90,6 @@ const sizes = {
   pixelratio: Math.min(2, window.devicePixelRatio),
   resolution: new Vector2(window.innerWidth, window.innerHeight),
 };
-
-const materials: Record<string, Material> = {};
-const darkMaterial = new MeshBasicMaterial({ color: '#000' });
 
 /**
  * Loader
@@ -584,17 +580,3 @@ function resize() {
 }
 
 window.addEventListener('resize', resize);
-
-function darkenMaterial(obj: Object3D) {
-  if (obj instanceof Mesh && !BLOOM_LAYER.test(obj.layers)) {
-    materials[obj.uuid] = obj.material;
-    obj.material = darkMaterial;
-  }
-}
-
-function restoreMaterial(obj: Object3D) {
-  if (obj instanceof Mesh && materials[obj.uuid]) {
-    obj.material = materials[obj.uuid];
-    delete materials[obj.uuid];
-  }
-}
