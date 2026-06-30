@@ -96,13 +96,13 @@ const sizes = {
  */
 
 const textureLoader = new TextureLoader();
-textureLoader.setPath('/src/assets/textures');
+textureLoader.setPath('/assets/textures');
 
 const gltfLoader = new GLTFLoader();
-gltfLoader.setPath('/src/assets/models/');
+gltfLoader.setPath('/assets/models/');
 
 const hdrLoader = new HDRLoader();
-hdrLoader.setPath('/src/assets/hdr/');
+hdrLoader.setPath('/assets/hdr/');
 
 /**
  * Textures
