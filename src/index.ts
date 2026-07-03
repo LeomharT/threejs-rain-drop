@@ -24,7 +24,6 @@ import {
   RepeatWrapping,
   Scene,
   ShaderChunk,
-  ShaderLib,
   ShaderMaterial,
   Texture,
   TextureLoader,
@@ -69,8 +68,6 @@ type ShaderLab = typeof ShaderChunk & {
 (ShaderChunk as ShaderLab)['random2D'] = random2D;
 (ShaderChunk as ShaderLab)['simplex3DNoise'] = simplex3DNoise;
 
-console.log(ShaderLib);
-
 const LAYERS = {
   BLOOM: 1,
   RAIN: 2,
@@ -109,7 +106,10 @@ hdrLoader.setPath('/assets/hdr/');
  */
 
 const floorNormal = textureLoader.load('/normal.png');
+
 const floorRoughness = textureLoader.load('/roughness.jpg');
+floorRoughness.anisotropy = 16;
+
 const floorMask = textureLoader.load('/opacity.jpg');
 
 const rainNormal = textureLoader.load('/rainNormal.png');
@@ -220,7 +220,7 @@ const uniforms = {
   uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
   uRippleCircleScale: new Uniform(15.049),
-  uDistortionAmount: new Uniform(0.088),
+  uDistortionAmount: new Uniform(0.1065),
   uBlurStrength: new Uniform(5.894),
 };
 
@@ -262,7 +262,7 @@ uniforms.uTextureMatrix.value = (
   floorMirror.material as ShaderMaterial
 ).uniforms.textureMatrix.value;
 
-const ringGeometry = new TorusGeometry(0.8, 0.03, 32, 100);
+const ringGeometry = new TorusGeometry(0.5, 0.01, 32, 100);
 const ringMaterial = new MeshBasicMaterial({
   color: new Color().setRGB(0.24, 0.07, 0.61),
 });
@@ -517,10 +517,10 @@ const fpsGraph: any = pane.addBlade({
   });
 }
 
-const f_monkey = pane.addFolder({
-  title: 'Monkey',
+const f_ring = pane.addFolder({
+  title: 'Ring',
 });
-f_monkey
+f_ring
   .addBinding(ringMaterial, 'color', {
     color: { type: 'float' },
   })
@@ -531,6 +531,13 @@ f_monkey
       val.value.b,
     );
   });
+
+const f_light = pane.addFolder({ title: 'Light' });
+f_light.addBinding(rectLight1, 'intensity', {
+  step: 0.01,
+  min: 0,
+  max: 2,
+});
 
 /**
  * Event
