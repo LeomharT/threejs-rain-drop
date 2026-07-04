@@ -7,13 +7,13 @@ import {
   InstancedMesh,
   Layers,
   LinearFilter,
-  LinearMipmapLinearFilter,
   MathUtils,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
+  NearestFilter,
   NearestMipMapLinearFilter,
   Object3D,
   PCFShadowMap,
@@ -255,8 +255,8 @@ scene.add(floor);
 
 uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
 uniforms.uGroundReflection.value.generateMipmaps = true;
-uniforms.uGroundReflection.value.minFilter = LinearMipmapLinearFilter;
-uniforms.uGroundReflection.value.magFilter = LinearFilter;
+uniforms.uGroundReflection.value.minFilter = NearestMipMapLinearFilter;
+uniforms.uGroundReflection.value.magFilter = NearestFilter;
 
 uniforms.uTextureMatrix.value = (
   floorMirror.material as ShaderMaterial
