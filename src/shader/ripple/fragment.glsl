@@ -131,6 +131,7 @@ void main() {
     floorNormal = normalize(floorNormal);
 
     float opacity = texture2D(uGroundWetMask, vUv).r;
+          opacity = smoothstep(0.85, 1.0, opacity);
 
     for(int j = -MAX_RADIUS; j <= MAX_RADIUS; ++j) {
         for(int i = -MAX_RADIUS; i <= MAX_RADIUS; ++i) {
