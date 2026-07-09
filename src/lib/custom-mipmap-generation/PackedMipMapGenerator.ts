@@ -107,6 +107,7 @@ export class PackedMipMapGenerator {
     // init the renderer
     renderer.autoClear = false;
     renderer.setClearColor(0);
+    // @ts-ignore
     renderer.setClearAlpha();
 
     // write the first texture to the texture
