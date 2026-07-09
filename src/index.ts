@@ -458,8 +458,8 @@ const fpsGraph: any = pane.addBlade({
   });
   folder.addBinding(uniforms.uBlurStrength, 'value', {
     label: 'Blur Strength',
-    min: -10,
-    max: 10,
+    min: 0,
+    max: 20,
     step: 0.001,
   });
   folder.addBinding(rain.position, 'x', {
