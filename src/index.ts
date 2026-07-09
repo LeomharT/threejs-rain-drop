@@ -50,6 +50,7 @@ import {
 } from 'three/examples/jsm/Addons.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Pane } from 'tweakpane';
+import { PackedMipMapGenerator } from './lib/custom-mipmap-generation/PackedMipMapGenerator';
 import bloomFragmentShader from './shader/bloom/fragment.glsl?raw';
 import bloomVertexShader from './shader/bloom/vertex.glsl?raw';
 import random2D from './shader/include/random2D.glsl?raw';
@@ -205,6 +206,8 @@ composer.addPass(mixPass);
 composer.addPass(fxaa);
 composer.addPass(outputPass);
 
+const mipMapper = new PackedMipMapGenerator();
+
 /**
  * Uniforms
  */
@@ -216,7 +219,7 @@ const uniforms = {
   uGroundWetMask: new Uniform(floorMask),
   uRoughnessMap: new Uniform(floorRoughness),
   uGroundNormal: new Uniform(floorNormal),
-  uGroundReflection: new Uniform<Texture | null>(null),
+  uGroundReflection: new Uniform<Texture>(new Texture()),
   uTextureMatrix: new Uniform<Matrix4>(new Matrix4()),
 
   uRippleCircleScale: new Uniform(15.049),
@@ -233,12 +236,12 @@ const floorGeometry = new PlaneGeometry(5, 5, 128, 128);
 const reflectionGeometry = floorGeometry.clone();
 const floorMirror = new Reflector(reflectionGeometry, {
   clipBias: 0.003,
-  textureWidth: sizes.width * sizes.pixelratio,
-  textureHeight: sizes.height * sizes.pixelratio,
-  color: 0xb5b5b5,
+  textureWidth: sizes.width,
+  textureHeight: sizes.height,
 });
 floorMirror.rotation.x = -Math.PI / 2;
 floorMirror.position.y = -0.001;
+floorMirror.getRenderTarget().texture.generateMipmaps = false;
 scene.add(floorMirror);
 
 // Floor
@@ -252,11 +255,6 @@ floor.receiveShadow = true;
 floor.castShadow = true;
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
-
-uniforms.uGroundReflection.value = floorMirror.getRenderTarget().texture;
-uniforms.uGroundReflection.value.generateMipmaps = true;
-uniforms.uGroundReflection.value.minFilter = NearestMipMapLinearFilter;
-uniforms.uGroundReflection.value.magFilter = NearestFilter;
 
 uniforms.uTextureMatrix.value = (
   floorMirror.material as ShaderMaterial
@@ -390,10 +388,6 @@ rightWall.position.x = 2.5;
 rightWall.position.y = 2.5;
 rightWall.rotation.y = -Math.PI / 2;
 // scene.add(rightWall);
-
-/**
- * Debug
- */
 
 /**
  * Lights
@@ -543,6 +537,32 @@ f_light.addBinding(rectLight1, 'intensity', {
  * Event
  */
 
+const nearestTarget = new WebGLRenderTarget();
+nearestTarget.texture.minFilter = NearestFilter;
+nearestTarget.texture.magFilter = NearestFilter;
+
+function updateTexture() {
+  // render mip pyramids
+  mipMapper.update(
+    floorMirror.getRenderTarget().texture,
+    nearestTarget,
+    renderer,
+  );
+
+  // render original target
+  const copyQuad = mipMapper._copyQuad;
+  (copyQuad.material as ShaderMaterial).uniforms.tDiffuse.value =
+    floorMirror.getRenderTarget().texture;
+  copyQuad.camera.setViewOffset(1, 1, 0, 0, 1, 1);
+
+  renderer.setRenderTarget(null);
+
+  // dipose
+  mipMapper.dispose();
+
+  uniforms.uGroundReflection.value = nearestTarget.texture;
+}
+
 function render() {
   fpsGraph.begin();
 
@@ -552,6 +572,7 @@ function render() {
   const elapsedTime = timer.getElapsed();
 
   updateFrameTexture();
+  updateTexture();
 
   bloomComposer.render(delta);
   composer.render(delta);

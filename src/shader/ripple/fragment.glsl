@@ -172,9 +172,9 @@ void main() {
     vec2  finalUv = reflectUV + floorNormal.xy * uDistortionAmount - rainUv;
     float level   = roughness * uBlurStrength;
 
-    color = texture2D(uGroundReflection, finalUv, level).rgb;
+    // color = texture2D(uGroundReflection, finalUv, level).rgb;
  
-    // color = packedTexture2DLOD(uGroundReflection, finalUv, level, uResolution).rgb;
+    color = packedTexture2DLOD(uGroundReflection, finalUv, level, uResolution).rgb;
     // color = vec3(0.0)
     // + 5.*pow(clamp(dot(n, normalize(vec3(1., 0.7, 0.5))), 0., 1.), 6.);
 
