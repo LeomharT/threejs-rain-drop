@@ -571,6 +571,7 @@ function render() {
   const delta = timer.getDelta();
   const elapsedTime = timer.getElapsed();
 
+  // Because render frame texture, fix relfector
   updateFrameTexture();
   updateTexture();
 
